@@ -222,7 +222,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <a>Security</a>
   </div>
   <div class="topnav-spacer"></div>
-  <button class="btn-deploy" onclick="rerunAnalysis()">Deploy Optimization</button>
+  <button class="btn-deploy">Deploy Optimization</button>
 </nav>
 
 <div class="app-body">
@@ -258,7 +258,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </nav>
 
   <div class="sb-bottom">
-    <button class="btn-new" onclick="rerunAnalysis()">
+    <button class="btn-new" onclick="location.reload()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       New Analysis
     </button>
@@ -269,10 +269,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="sb-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       Support
-    </div>
-    <div class="sb-link" onclick="localStorage.removeItem('ia_key');location.reload();" style="margin-top:.25rem;cursor:pointer;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      Change API Key
     </div>
   </div>
 
@@ -438,33 +434,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div><!-- /main -->
 </div><!-- /app-body -->
 
-<!-- ══ Setup Modal (first run) ════════════════════════════════════════ -->
-<div id="setupModal" style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.7);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:#fff;border-radius:16px;width:420px;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
-      <div style="width:42px;height:42px;background:linear-gradient(135deg,#6366f1,#2563eb);border-radius:10px;display:flex;align-items:center;justify-content:center;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      </div>
-      <div>
-        <div style="font-size:1rem;font-weight:700;color:#111827;">Connect Anthropic API</div>
-        <div style="font-size:.75rem;color:#6b7280;">One-time setup · Saved to this browser</div>
-      </div>
-    </div>
-    <p style="font-size:.8rem;color:#6b7280;line-height:1.6;margin-bottom:1.25rem;">
-      Your API key is stored only in your browser's local storage — never sent to any server other than Anthropic.
-      Get your key at <a href="https://console.anthropic.com" target="_blank" style="color:#2563eb;">console.anthropic.com</a>
-    </p>
-    <label style="font-size:.8rem;font-weight:600;color:#374151;display:block;margin-bottom:.4rem;">Anthropic API Key</label>
-    <input type="password" id="setupKey" placeholder="sk-ant-api03-..."
-      style="width:100%;padding:.6rem .85rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.85rem;outline:none;font-family:monospace;margin-bottom:1rem;"
-      onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#d1d5db'" />
-    <div id="setupErr" style="color:#ef4444;font-size:.78rem;margin-bottom:.5rem;min-height:1rem;"></div>
-    <button onclick="saveKey()" style="width:100%;background:#2563eb;color:white;border:none;padding:.7rem;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;">
-      Launch Dashboard →
-    </button>
-  </div>
-</div>
-
 <!-- ══ Detail Modal ═══════════════════════════════════════════════════ -->
 <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;overflow:auto;padding:2rem;">
   <div style="background:#fff;border-radius:16px;max-width:760px;margin:0 auto;padding:2rem;">
@@ -477,9 +446,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <script>
-// ══ API KEY — loaded from localStorage or set during this session ══════════
-window._iaKey = localStorage.getItem('ia_key') || '';
-const getKey = () => window._iaKey;
 
 // ══ Sample campaign data ════════════════════════════════════════════════════
 const RAW_CSV = `campaign_id,campaign_name,campaign_type,segment,send_date,subject_line,total_sent,total_delivered,total_opened,total_clicked,total_converted,total_bounced,total_unsubscribed,revenue_generated
@@ -557,90 +523,9 @@ function renderMetrics() {
 }
 renderMetrics();
 
-// ══ Claude streaming helper ══════════════════════════════════════════════════
-async function claude(prompt, onToken) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key': getKey(),
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true',
-    },
-    body: JSON.stringify({
-      model:'claude-opus-4-6', max_tokens:1500, stream:true,
-      thinking:{type:'adaptive'},
-      messages:[{role:'user',content:prompt}],
-    }),
-  });
-  if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||'API error'); }
-  const reader=res.body.getReader(), dec=new TextDecoder();
-  let buf='', full='';
-  while(true) {
-    const {done,value}=await reader.read(); if(done) break;
-    buf+=dec.decode(value,{stream:true});
-    const lines=buf.split('\n'); buf=lines.pop();
-    for(const line of lines) {
-      if(!line.startsWith('data: ')) continue;
-      const d=line.slice(6).trim(); if(d==='[DONE]') break;
-      try { const ev=JSON.parse(d); if(ev.type==='content_block_delta'&&ev.delta?.type==='text_delta'){full+=ev.delta.text;onToken(full);} } catch{}
-    }
-  }
-  return full;
-}
-
-// ══ Dashboard summary for AI ══════════════════════════════════════════════════
-const SUMMARY = `
-Email campaign dataset: ${campaigns.length} campaigns, ${metrics.total_sent.toLocaleString()} total emails sent.
-Average open rate: ${metrics.open_rate}% (industry benchmark: ${BENCHMARKS.open_rate}%)
-Average CTR: ${metrics.click_rate}% (industry benchmark: ${BENCHMARKS.click_rate}%)
-Average conversion: ${metrics.conversion_rate}% (industry benchmark: ${BENCHMARKS.conversion_rate}%)
-Total revenue generated: $${metrics.total_revenue.toLocaleString()}
-Campaign types: promotional, newsletter, onboarding, re_engagement, product_launch
-Top performers: ${campaigns.sort((a,b)=>b.open_rate-a.open_rate).slice(0,3).map(c=>c.campaign_name).join(', ')}
-`;
-
-// ══ Generate hero headline ════════════════════════════════════════════════════
-async function generateHero() {
-  const heroEl = document.getElementById('heroText');
-  heroEl.innerHTML = '';
-  heroEl.classList.add('typing-cursor');
-  await claude(
-    `Based on this email campaign data:\n${SUMMARY}\n\nWrite ONE compelling 6-10 word headline about the strongest performance insight (like "Campaign velocity is peaking in North America." or "Onboarding sequences are outpacing all benchmarks."). Output ONLY the headline — no quotes, no extra text.`,
-    (text) => { heroEl.textContent = text; }
-  );
-  heroEl.classList.remove('typing-cursor');
-}
-
-// ══ Generate insight stream ═══════════════════════════════════════════════════
-async function generateInsightStream() {
-  const PROMPT = `Based on this email campaign performance data:
-${SUMMARY}
-
-Return ONLY a valid JSON array with exactly 3 insight items, no markdown, no explanation:
-[
-  {"status":"critical","title":"...","description":"...","time":"09:41 AM"},
-  {"status":"optimized","title":"...","description":"...","time":"08:12 AM"},
-  {"status":"queued","title":"...","description":"..."}
-]
-Status meanings: critical=issue needing attention, optimized=something working well, queued=upcoming action.
-Make titles specific to the actual data. Keep descriptions under 20 words.`;
-
-  let raw = '';
-  await claude(PROMPT, t => { raw = t; });
-
-  try {
-    const start = raw.indexOf('['), end = raw.lastIndexOf(']');
-    const items = JSON.parse(raw.slice(start, end+1));
-    renderInsightStream(items);
-  } catch(e) {
-    renderInsightStream([
-      {status:'optimized',title:'Open Rate Above Benchmark',description:`${metrics.open_rate}% avg open rate exceeds industry benchmark by ${(metrics.open_rate-21.5).toFixed(1)}%.`,time:'Now'},
-      {status:'critical',title:'Conversion Rate Gap',description:`Conversion at ${metrics.conversion_rate}% — AI optimization can close the ${(3.5-metrics.conversion_rate).toFixed(1)}% benchmark gap.`,time:'Live'},
-      {status:'queued',title:'Re-engagement Refresh',description:'Schedule re-engagement sequence for inactive_90d segment.'},
-    ]);
-  }
-}
+// ══ Static hero ═══════════════════════════════════════════════════════════════
+document.getElementById('heroText').textContent =
+  'Onboarding campaigns are outperforming all benchmarks.';
 
 function renderInsightStream(items) {
   const el = document.getElementById('streamCards');
@@ -673,32 +558,6 @@ function renderInsightStream(items) {
   el.innerHTML = cards + healthCard;
 }
 
-// ══ Generate validated wins ═══════════════════════════════════════════════════
-async function generateWins() {
-  const PROMPT = `Based on this email campaign data:
-${SUMMARY}
-
-Return ONLY a valid JSON array of exactly 2 validated wins, no markdown:
-[
-  {"title":"...","description":"...","time_ago":"2H AGO"},
-  {"title":"...","description":"...","time_ago":"5H AGO"}
-]
-Each title 2-4 words. Description max 15 words with a specific metric (bold key stat with **bold**).`;
-
-  let raw = '';
-  await claude(PROMPT, t => { raw = t; });
-
-  try {
-    const start = raw.indexOf('['), end = raw.lastIndexOf(']');
-    const wins = JSON.parse(raw.slice(start, end+1));
-    renderWins(wins);
-  } catch {
-    renderWins([
-      { title:'Onboarding Performance', description:`Day-1 open rate at **70%** — <strong>3x</strong> industry benchmark.`, time_ago:'2H AGO' },
-      { title:'VIP Engagement Surge', description:`VIP Early Access achieved <strong>34.9%</strong> click rate — top campaign.`, time_ago:'5H AGO' },
-    ]);
-  }
-}
 
 function renderWins(wins) {
   document.getElementById('winsGrid').innerHTML = wins.map(w => `
@@ -710,69 +569,50 @@ function renderWins(wins) {
     </div>`).join('');
 }
 
-// ══ Detailed Analysis Modal ═══════════════════════════════════════════════════
-async function showDetailedAnalysis() {
+// ══ Detailed Analysis Modal (static) ═════════════════════════════════════════
+function showDetailedAnalysis() {
   document.getElementById('modal').style.display = 'block';
-  const content = document.getElementById('modalContent');
-  content.innerHTML = '<em style="color:#9ca3af">Generating detailed analysis with Claude…</em>';
-
-  const topCampaigns = [...campaigns].sort((a,b)=>b.open_rate-a.open_rate).slice(0,5)
-    .map(c=>`${c.campaign_name}: open=${c.open_rate}%, click=${c.click_rate}%, conv=${c.conversion_rate}%, revenue=$${c.revenue_generated}`).join('\n');
-
-  const prompt = `You are an expert email marketing analyst. Analyze these top-performing campaigns:
-
-${topCampaigns}
-
-Dataset summary:
-${SUMMARY}
-
-Provide a comprehensive analysis with:
-## What Worked
-## What Didn't Work
-## What to Optimize Next
-## Segment Recommendations
-
-Be specific, data-driven, and concise. Use bullet points.`;
-
-  content.innerHTML = '';
-  await claude(prompt, text => {
-    content.innerHTML = text
-      .replace(/## (.*)/g,'<h3 style="font-size:.95rem;font-weight:700;margin:1rem 0 .4rem;color:#111827;">$1</h3>')
-      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-      .replace(/^- (.+)/gm,'<li style="margin:.25rem 0;">$1</li>')
-      .replace(/\n/g,'<br>');
-  });
+  document.getElementById('modalContent').innerHTML = `
+    <h3 style="font-size:.95rem;font-weight:700;margin:0 0 .4rem;color:#111827;">✅ What Worked</h3>
+    <ul style="padding-left:1.25rem;margin-bottom:1rem;">
+      <li style="margin:.3rem 0;font-size:.83rem;">Onboarding Day 1 achieved a <strong>70% open rate</strong> — 3.3× the industry benchmark of 21.5%.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;">VIP Early Access hit <strong>34.9% click rate</strong>, highest across all campaigns.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;">Cyber Monday drove <strong>$104,400 revenue</strong> with a 40% open rate lift vs. Black Friday.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;">Product launch campaigns averaged <strong>57.5% open rate</strong> — best performing type overall.</li>
+    </ul>
+    <h3 style="font-size:.95rem;font-weight:700;margin:.75rem 0 .4rem;color:#111827;">❌ What Didn't Work</h3>
+    <ul style="padding-left:1.25rem;margin-bottom:1rem;">
+      <li style="margin:.3rem 0;font-size:.83rem;">Re-engagement campaigns averaged only <strong>15% open rate</strong> — 6.5 pts below benchmark.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;">Newsletter CTR averaged <strong>2.4%</strong> with zero conversions — no revenue attribution.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;">January New Year Promo had the <strong>lowest open rate</strong> (20%) among promotional emails.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;">Bounce rate on Black Friday was <strong>4%</strong> — 5.7× above the 0.7% benchmark, suggesting list hygiene issues.</li>
+    </ul>
+    <h3 style="font-size:.95rem;font-weight:700;margin:.75rem 0 .4rem;color:#111827;">🎯 What to Optimize Next</h3>
+    <ul style="padding-left:1.25rem;margin-bottom:1rem;">
+      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Clean bounce list</strong> before next promotional send — 4% bounce on large sends risks domain reputation.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Add conversion CTA to newsletters</strong> — 22% average open rate is wasted with 0% revenue attribution.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Expand VIP / product launch sequences</strong> — these segments show 3–5× higher engagement than broadcast sends.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Refresh re-engagement offer</strong> — 15% discount is underperforming; test 25%+ or free trial offers.</li>
+    </ul>
+    <h3 style="font-size:.95rem;font-weight:700;margin:.75rem 0 .4rem;color:#111827;">👥 Segment Recommendations</h3>
+    <ul style="padding-left:1.25rem;">
+      <li style="margin:.3rem 0;font-size:.83rem;"><strong>high_value:</strong> Expand gift guide and early access campaigns — $22,725 revenue on 8,500 sends = best RPE.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;"><strong>new_users:</strong> Add Day 14 and Day 30 onboarding touchpoints to sustain the strong Day-1 engagement.</li>
+      <li style="margin:.3rem 0;font-size:.83rem;"><strong>inactive_90d:</strong> Increase win-back incentive; current 20% off yielding only 0.48% conversion rate.</li>
+    </ul>`;
 }
 
-// ══ Re-run all analysis ═══════════════════════════════════════════════════════
-async function rerunAnalysis() {
-  renderMetrics();
-  await Promise.all([generateHero(), generateInsightStream(), generateWins()]);
-}
+// ══ Static render on load ═════════════════════════════════════════════════════
+renderInsightStream([
+  { status:'critical', title:'Re-engagement Open Rate', description:'Win-back campaigns averaging 15% — 6.5pts below benchmark. Offer needs refresh.', time:'09:41 AM' },
+  { status:'optimized', title:'Onboarding Day 1', description:'70% open rate achieved — 3× industry benchmark across new_users segment.', time:'08:12 AM' },
+  { status:'queued',   title:'List Hygiene Sweep', description:'Bounce rate on promotional sends exceeds safe threshold. Schedule cleanup.' },
+]);
 
-// ══ Key setup ════════════════════════════════════════════════════════════════
-function saveKey() {
-  const key = document.getElementById('setupKey').value.trim();
-  if (!key.startsWith('sk-')) {
-    document.getElementById('setupErr').textContent = 'Key must start with sk-ant-…';
-    return;
-  }
-  localStorage.setItem('ia_key', key);
-  // Update runtime variable and launch without a reload
-  window._iaKey = key;
-  document.getElementById('setupModal').style.display = 'none';
-  rerunAnalysis();
-}
-document.getElementById('setupKey').addEventListener('keydown', e => { if(e.key==='Enter') saveKey(); });
-
-// ══ Auto-run on load ══════════════════════════════════════════════════════════
-const modal = document.getElementById('setupModal');
-if (!localStorage.getItem('ia_key')) {
-  modal.style.display = 'flex';
-} else {
-  modal.style.display = 'none';
-  rerunAnalysis();
-}
+renderWins([
+  { title:'VIP Early Access',    description:'Achieved <strong>34.9%</strong> click rate — highest across all 15 campaigns.', time_ago:'2H AGO' },
+  { title:'Cyber Monday Revenue', description:'<strong>$104,400</strong> revenue generated — best single campaign in dataset.', time_ago:'5H AGO' },
+]);
 </script>
 </body>
 </html>
