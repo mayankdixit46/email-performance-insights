@@ -1,0 +1,16 @@
+campaign_id,campaign_name,campaign_type,segment,send_date,subject_line,total_sent,total_delivered,total_opened,total_clicked,total_converted,total_bounced,total_unsubscribed,revenue_generated
+C001,Black Friday Sale,promotional,all_subscribers,2024-11-29,Don't miss our biggest sale of the year — 50% off everything,45000,43200,12960,3888,778,1800,450,58350.00
+C002,Cyber Monday Final Hours,promotional,all_subscribers,2024-12-02,⏰ Last chance: 40% off ends at midnight,45000,43500,17400,6960,1392,1500,390,104400.00
+C003,December Newsletter,newsletter,all_subscribers,2024-12-05,Your December digest: Tips trends and updates,38000,37240,8593,859,0,760,228,0.00
+C004,Win-Back Inactive Users,re_engagement,inactive_90d,2024-12-08,We miss you! Here's 20% off to come back,12000,11400,1368,274,55,600,360,2750.00
+C005,Holiday Gift Guide,promotional,high_value,2024-12-10,The perfect gifts for everyone on your list,8500,8415,3366,1010,303,85,34,22725.00
+C006,Product Launch — AI Feature,product_launch,active_users,2024-12-12,Introducing our new AI-powered dashboard,22000,21780,9801,3920,588,220,66,0.00
+C007,January New Year Promo,promotional,all_subscribers,2025-01-02,New year new savings — 30% off to start 2025,46000,44160,8832,1766,353,1840,460,26475.00
+C008,Onboarding — Day 1,onboarding,new_users,2025-01-05,Welcome! Here's how to get started,3200,3200,2240,1344,896,0,16,0.00
+C009,Onboarding — Day 7,onboarding,new_users,2025-01-12,You're one week in — here's what's next,3100,3100,1550,620,248,0,31,0.00
+C010,February Newsletter,newsletter,all_subscribers,2025-02-06,February updates: What's new this month,39500,38710,8516,1022,0,790,237,0.00
+C011,Valentine's Day Sale,promotional,all_subscribers,2025-02-10,Share the love — 25% off for Valentine's Day,44000,42240,11419,3426,685,1760,440,34250.00
+C012,VIP Early Access,product_launch,vip_customers,2025-02-18,You're invited: Early access to our new feature,5000,4975,3482,1741,870,25,10,0.00
+C013,Spring Collection Launch,promotional,all_subscribers,2025-03-01,Spring is here — shop the new collection,47000,45120,11280,2820,564,1880,470,42300.00
+C014,Re-engagement Offer,re_engagement,inactive_60d,2025-03-10,Still thinking it over? Here's 15% off,9500,9025,1624,325,65,475,285,1950.00
+C015,March Newsletter,newsletter,all_subscribers,2025-03-15,March roundup: Insights tips and resources,40000,39200,8624,1034,0,800,240,0.00
