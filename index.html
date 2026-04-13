@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📧 Email Performance Insights — AI Powered</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --primary-light: #6366f1;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* Header */
+    .header { background: linear-gradient(135deg, var(--primary-dark), var(--primary-light)); color: white; padding: 1.25rem 2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(79,70,229,.35); }
+    .header h1 { font-size: 1.4rem; font-weight: 700; }
+    .header p { font-size: 0.8rem; opacity: .8; margin-top: 3px; }
+    .header a { color: rgba(255,255,255,.85); font-size: .8rem; text-decoration: none; border: 1px solid rgba(255,255,255,.4); padding: .3rem .7rem; border-radius: 6px; }
+    .header a:hover { background: rgba(255,255,255,.15); }
+
+    /* Layout */
+    .layout { display: flex; min-height: calc(100vh - 72px); }
+    .sidebar { width: 270px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 1.25rem; flex-shrink: 0; position: sticky; top: 0; height: calc(100vh - 72px); overflow-y: auto; }
+    .main { flex: 1; padding: 1.5rem 2rem; overflow-y: auto; }
+
+    /* Sidebar */
+    .s-section { margin-bottom: 1.5rem; }
+    .s-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .75rem; }
+    label { display: block; font-size: .8rem; font-weight: 500; margin-bottom: .3rem; }
+    input[type=password], input[type=text], select { width: 100%; padding: .45rem .7rem; border: 1px solid var(--border); border-radius: 6px; font-size: .8rem; background: var(--bg); color: var(--text); outline: none; }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
+    .radio-item { display: flex; align-items: center; gap: .5rem; font-size: .82rem; cursor: pointer; margin-bottom: .4rem; }
+    .radio-item input { width: auto; cursor: pointer; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+    .card-title { font-size: .95rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+
+    /* Stats row */
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: .8rem; text-align: center; }
+    .stat-box .lbl { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .stat-box .val { font-size: 1.2rem; font-weight: 700; margin: .2rem 0; }
+    .stat-box .delta { font-size: .72rem; }
+    .up { color: var(--success); } .down { color: var(--danger); }
+
+    /* Table */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    th { background: var(--bg); padding: .45rem .7rem; text-align: left; font-weight: 600; color: var(--muted); border-bottom: 2px solid var(--border); white-space: nowrap; }
+    td { padding: .45rem .7rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tr:hover td { background: #f1f5f9; }
+
+    /* Badge */
+    .badge { display: inline-block; padding: .15rem .45rem; border-radius: 9999px; font-size: .68rem; font-weight: 600; }
+    .b-blue { background: #dbeafe; color: #1d4ed8; }
+    .b-purple { background: #ede9fe; color: #7c3aed; }
+    .b-green { background: #dcfce7; color: #15803d; }
+    .b-orange { background: #ffedd5; color: #c2410c; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: .5rem; padding: .6rem 1.2rem; border-radius: 8px; font-size: .85rem; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-outline { background: white; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { background: var(--bg); }
+    .btn-full { width: 100%; justify-content: center; padding: .85rem; font-size: .95rem; }
+    .btn-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+
+    /* Accordion */
+    .acc { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: .75rem; }
+    .acc-hdr { padding: .9rem 1.2rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--surface); font-weight: 600; font-size: .875rem; transition: background .15s; }
+    .acc-hdr:hover { background: #f8fafc; }
+    .acc-hdr.open { border-bottom: 1px solid var(--border); }
+    .acc-body { display: none; padding: 1.2rem; }
+    .acc-body.open { display: block; }
+    .chev { transition: transform .2s; display: inline-block; }
+    .chev.open { transform: rotate(180deg); }
+
+    /* Insight */
+    .insight { background: #fafafa; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-top: .75rem; line-height: 1.75; min-height: 48px; }
+    .insight h2 { font-size: 1rem; margin: .9rem 0 .4rem; }
+    .insight h3 { font-size: .875rem; margin: .8rem 0 .35rem; color: var(--text); }
+    .insight ul, .insight ol { padding-left: 1.4rem; margin: .4rem 0; }
+    .insight li { margin: .3rem 0; font-size: .83rem; }
+    .insight p { font-size: .83rem; margin: .4rem 0; }
+    .insight hr { border: none; border-top: 1px solid var(--border); margin: .75rem 0; }
+    .insight strong { color: var(--text); }
+
+    /* Alert */
+    .alert { padding: .8rem 1rem; border-radius: 8px; font-size: .83rem; margin-bottom: .75rem; }
+    .a-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .a-err { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .a-ok { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+    /* Spinner */
+    .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: sp .65s linear infinite; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+
+    /* Section heading */
+    .sec-heading { font-size: 1rem; font-weight: 700; margin: 1.25rem 0 .75rem; display: flex; align-items: center; gap: .5rem; }
+
+    /* Divider */
+    hr.div { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <h1>📧 Email Performance Insights</h1>
+    <p>Powered by Claude Opus 4.6 · Adaptive Thinking · Real-time streaming</p>
+  </div>
+  <a href="https://github.com/mayankdixit46/email-performance-insights" target="_blank">⭐ GitHub</a>
+</header>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="s-section">
+      <div class="s-label">🔑 API Key</div>
+      <label for="apiKey">Anthropic API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" />
+      <p style="font-size:.72rem;color:var(--muted);margin-top:.35rem;">
+        Get yours at <a href="https://console.anthropic.com" target="_blank" style="color:var(--primary)">console.anthropic.com</a>
+      </p>
+    </div>
+
+    <div class="s-section">
+      <div class="s-label">📂 Data Source</div>
+      <label class="radio-item"><input type="radio" name="src" value="sample" checked onchange="onSrcChange()" /> Sample data (15 campaigns)</label>
+      <label class="radio-item"><input type="radio" name="src" value="upload" onchange="onSrcChange()" /> Upload CSV</label>
+      <div id="uploadWrap" style="display:none;margin-top:.6rem;">
+        <input type="file" id="csvFile" accept=".csv" onchange="onFileUpload()" />
+      </div>
+    </div>
+
+    <div class="s-section">
+      <div class="s-label">🔍 Options</div>
+      <label>Analysis Mode</label>
+      <select id="modeSelect" style="margin-bottom:.6rem;">
+        <option value="all">Campaigns + Groups</option>
+        <option value="campaigns">Campaigns only</option>
+        <option value="groups">Groups only</option>
+      </select>
+      <label>Group by</label>
+      <select id="groupBy">
+        <option value="campaign_type">Campaign Type</option>
+        <option value="segment">Segment</option>
+      </select>
+    </div>
+
+    <div class="s-section">
+      <div class="s-label">ℹ️ About</div>
+      <p style="font-size:.75rem;color:var(--muted);line-height:1.65;">
+        Generates structured AI insights:<br>
+        <strong>✅ What Worked</strong><br>
+        <strong>❌ What Didn't Work</strong><br>
+        <strong>🎯 What to Optimize Next</strong>
+      </p>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div id="dataSection"></div>
+
+    <div id="runSection" style="display:none;" class="card">
+      <button class="btn btn-primary btn-full" id="runBtn" onclick="runAnalysis()">
+        🚀 Generate AI Insights
+      </button>
+    </div>
+
+    <div id="results"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<script>
+// ── Sample data ───────────────────────────────────────────────────────────────
+const SAMPLE = `campaign_id,campaign_name,campaign_type,segment,send_date,subject_line,total_sent,total_delivered,total_opened,total_clicked,total_converted,total_bounced,total_unsubscribed,revenue_generated
+C001,Black Friday Sale,promotional,all_subscribers,2024-11-29,Don't miss our biggest sale — 50% off everything,45000,43200,12960,3888,778,1800,450,58350
+C002,Cyber Monday Final Hours,promotional,all_subscribers,2024-12-02,Last chance: 40% off ends at midnight,45000,43500,17400,6960,1392,1500,390,104400
+C003,December Newsletter,newsletter,all_subscribers,2024-12-05,Your December digest: Tips trends and updates,38000,37240,8593,859,0,760,228,0
+C004,Win-Back Inactive Users,re_engagement,inactive_90d,2024-12-08,We miss you! Here's 20% off to come back,12000,11400,1368,274,55,600,360,2750
+C005,Holiday Gift Guide,promotional,high_value,2024-12-10,The perfect gifts for everyone on your list,8500,8415,3366,1010,303,85,34,22725
+C006,Product Launch AI Feature,product_launch,active_users,2024-12-12,Introducing our new AI-powered dashboard,22000,21780,9801,3920,588,220,66,0
+C007,January New Year Promo,promotional,all_subscribers,2025-01-02,New year new savings — 30% off to start 2025,46000,44160,8832,1766,353,1840,460,26475
+C008,Onboarding Day 1,onboarding,new_users,2025-01-05,Welcome! Here is how to get started,3200,3200,2240,1344,896,0,16,0
+C009,Onboarding Day 7,onboarding,new_users,2025-01-12,You are one week in — here is what is next,3100,3100,1550,620,248,0,31,0
+C010,February Newsletter,newsletter,all_subscribers,2025-02-06,February updates: What is new this month,39500,38710,8516,1022,0,790,237,0
+C011,Valentine's Day Sale,promotional,all_subscribers,2025-02-10,Share the love — 25% off for Valentine's Day,44000,42240,11419,3426,685,1760,440,34250
+C012,VIP Early Access,product_launch,vip_customers,2025-02-18,You are invited: Early access to our new feature,5000,4975,3482,1741,870,25,10,0
+C013,Spring Collection Launch,promotional,all_subscribers,2025-03-01,Spring is here — shop the new collection,47000,45120,11280,2820,564,1880,470,42300
+C014,Re-engagement Offer,re_engagement,inactive_60d,2025-03-10,Still thinking it over? Here is 15% off,9500,9025,1624,325,65,475,285,1950
+C015,March Newsletter,newsletter,all_subscribers,2025-03-15,March roundup: Insights tips and resources,40000,39200,8624,1034,0,800,240,0`;
+
+const BENCHMARKS = {
+  open_rate: 21.5, click_rate: 2.3, click_to_open_rate: 10.5,
+  conversion_rate: 3.5, bounce_rate: 0.7, unsubscribe_rate: 0.1,
+};
+
+const TYPE_COLORS = {
+  promotional: 'b-blue', newsletter: 'b-green',
+  re_engagement: 'b-orange', product_launch: 'b-purple',
+  onboarding: 'b-green',
+};
+
+// ── CSV ───────────────────────────────────────────────────────────────────────
+function parseCSV(txt) {
+  const lines = txt.trim().split('\n');
+  const headers = splitLine(lines[0]);
+  return lines.slice(1).filter(l => l.trim()).map(l => {
+    const vals = splitLine(l);
+    const row = {};
+    headers.forEach((h, i) => row[h.trim()] = (vals[i] || '').trim());
+    return row;
+  });
+}
+function splitLine(line) {
+  const r = []; let cur = '', q = false;
+  for (const ch of line) {
+    if (ch === '"') q = !q;
+    else if (ch === ',' && !q) { r.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  r.push(cur); return r;
+}
+
+// ── Metrics ───────────────────────────────────────────────────────────────────
+function addMetrics(row) {
+  const n = v => parseFloat(v) || 0;
+  const d = n(row.total_delivered), o = n(row.total_opened),
+        cl = n(row.total_clicked), cv = n(row.total_converted),
+        s = n(row.total_sent), b = n(row.total_bounced), u = n(row.total_unsubscribed);
+  return {
+    ...row,
+    open_rate:          d  ? +((o/d)*100).toFixed(2) : 0,
+    click_rate:         d  ? +((cl/d)*100).toFixed(2) : 0,
+    click_to_open_rate: o  ? +((cl/o)*100).toFixed(2) : 0,
+    conversion_rate:    cl ? +((cv/cl)*100).toFixed(2) : 0,
+    bounce_rate:        s  ? +((b/s)*100).toFixed(2) : 0,
+    unsubscribe_rate:   d  ? +((u/d)*100).toFixed(2) : 0,
+  };
+}
+
+function campaignStats(c) {
+  const s = {};
+  for (const [m, bm] of Object.entries(BENCHMARKS)) {
+    const v = parseFloat(c[m]) || 0, diff = +(v - bm).toFixed(2);
+    s[m] = { value: v, benchmark: bm, vs_benchmark: diff };
+  }
+  s.revenue_generated = parseFloat(c.revenue_generated) || 0;
+  s.total_sent = parseInt(c.total_sent) || 0;
+  return s;
+}
+
+function groupStats(arr) {
+  const s = {};
+  for (const [m, bm] of Object.entries(BENCHMARKS)) {
+    const vals = arr.map(c => parseFloat(c[m]) || 0);
+    const avg = +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+    s[m] = { avg, max: +Math.max(...vals).toFixed(2), min: +Math.min(...vals).toFixed(2),
+              benchmark: bm, vs_benchmark: +(avg - bm).toFixed(2) };
+  }
+  s.total_campaigns = arr.length;
+  s.total_sent = arr.reduce((a, c) => a + (parseInt(c.total_sent) || 0), 0);
+  s.total_revenue = +arr.reduce((a, c) => a + (parseFloat(c.revenue_generated) || 0), 0).toFixed(2);
+  return s;
+}
+
+// ── Prompts ───────────────────────────────────────────────────────────────────
+function campaignPrompt(c, stats) {
+  return `You are an expert email marketing analyst. Analyze this campaign and provide structured insights.
+
+Campaign: ${JSON.stringify({ name: c.campaign_name, type: c.campaign_type, segment: c.segment, subject: c.subject_line, sent: c.total_sent, revenue: c.revenue_generated }, null, 2)}
+
+Performance vs Industry Benchmarks: ${JSON.stringify(stats, null, 2)}
+
+Respond in this EXACT format:
+
+## Campaign: ${c.campaign_name}
+
+### Performance Overview
+[2-3 sentences on overall performance and business impact]
+
+### ✅ What Worked
+- [Data-backed success #1]
+- [Data-backed success #2]
+- [Data-backed success #3]
+
+### ❌ What Didn't Work
+- [Data-backed issue #1]
+- [Data-backed issue #2]
+- [Data-backed issue #3]
+
+### 🎯 What to Optimize Next
+1. [Top priority action with expected impact]
+2. [Second action with rationale]
+3. [Third action with rationale]
+
+### Key Takeaway
+[Single most important insight — one sentence]`;
+}
+
+function groupPrompt(name, arr, stats) {
+  const summary = arr.map(c => ({
+    name: c.campaign_name,
+    open_rate: c.open_rate, click_rate: c.click_rate,
+    conversion_rate: c.conversion_rate, revenue: c.revenue_generated
+  }));
+  return `You are an expert email marketing strategist. Analyze this campaign group.
+
+Group: ${name} (${arr.length} campaigns)
+Campaigns: ${JSON.stringify(summary, null, 2)}
+Aggregate Stats vs Benchmarks: ${JSON.stringify(stats, null, 2)}
+
+Respond in this EXACT format:
+
+## Group Analysis: ${name}
+
+### Group Performance Overview
+[3-4 sentences on overall trends and business significance]
+
+### ✅ What Worked Across This Group
+- [Pattern #1 with data]
+- [Pattern #2 with data]
+- [Pattern #3 with data]
+
+### ❌ What Didn't Work Across This Group
+- [Challenge #1 with data]
+- [Challenge #2 with data]
+- [Challenge #3 with data]
+
+### 🎯 What to Optimize Next for This Group
+1. [Highest-impact strategic action]
+2. [Second action with rationale]
+3. [Third action with rationale]
+
+### Standout Campaigns
+- **Best performer:** [Name and why]
+- **Needs attention:** [Name and why]
+
+### Group Takeaway
+[Single most important strategic insight — one sentence]`;
+}
+
+// ── Claude API streaming ──────────────────────────────────────────────────────
+async function streamClaude(apiKey, prompt, el) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-6',
+      max_tokens: 2048,
+      stream: true,
+      thinking: { type: 'adaptive' },
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = '', full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (data === '[DONE]') break;
+      try {
+        const ev = JSON.parse(data);
+        if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+          full += ev.delta.text;
+          el.innerHTML = marked.parse(full);
+        }
+      } catch {}
+    }
+  }
+  return full;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let campaigns = [];
+let stored = {};
+
+// ── Handlers ──────────────────────────────────────────────────────────────────
+function onSrcChange() {
+  const src = document.querySelector('input[name="src"]:checked').value;
+  document.getElementById('uploadWrap').style.display = src === 'upload' ? 'block' : 'none';
+  if (src === 'sample') loadCSV(SAMPLE);
+  else { campaigns = []; document.getElementById('dataSection').innerHTML = ''; document.getElementById('runSection').style.display = 'none'; }
+}
+
+function onFileUpload() {
+  const f = document.getElementById('csvFile').files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = e => loadCSV(e.target.result);
+  r.readAsText(f);
+}
+
+function loadCSV(txt) {
+  campaigns = parseCSV(txt).map(addMetrics);
+  renderPreview();
+}
+
+// ── Render preview ────────────────────────────────────────────────────────────
+function renderPreview() {
+  const total = campaigns.length;
+  const sent = campaigns.reduce((a, c) => a + (parseInt(c.total_sent)||0), 0);
+  const avgOpen = (campaigns.reduce((a,c) => a+(parseFloat(c.open_rate)||0),0)/total).toFixed(1);
+  const rev = campaigns.reduce((a,c) => a+(parseFloat(c.revenue_generated)||0),0);
+
+  const rows = campaigns.map(c => {
+    const bc = TYPE_COLORS[c.campaign_type] || 'b-blue';
+    const orColor = c.open_rate >= BENCHMARKS.open_rate ? 'var(--success)' : 'var(--danger)';
+    const crColor = c.click_rate >= BENCHMARKS.click_rate ? 'var(--success)' : 'var(--danger)';
+    const bnColor = c.bounce_rate <= BENCHMARKS.bounce_rate ? 'var(--success)' : 'var(--danger)';
+    const rev = parseFloat(c.revenue_generated)||0;
+    return `<tr>
+      <td><strong>${c.campaign_name}</strong></td>
+      <td><span class="badge ${bc}">${c.campaign_type}</span></td>
+      <td>${c.segment}</td>
+      <td>${c.send_date}</td>
+      <td style="color:${orColor};font-weight:600">${c.open_rate}%</td>
+      <td style="color:${crColor};font-weight:600">${c.click_rate}%</td>
+      <td>${c.conversion_rate}%</td>
+      <td style="color:${bnColor};font-weight:600">${c.bounce_rate}%</td>
+      <td>${rev > 0 ? '$'+rev.toLocaleString() : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('dataSection').innerHTML = `
+    <div class="card">
+      <div class="card-title">📊 Campaign Overview</div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="lbl">Campaigns</div><div class="val">${total}</div></div>
+        <div class="stat-box"><div class="lbl">Total Sent</div><div class="val">${sent.toLocaleString()}</div></div>
+        <div class="stat-box"><div class="lbl">Avg Open Rate</div><div class="val">${avgOpen}%</div></div>
+        <div class="stat-box"><div class="lbl">Total Revenue</div><div class="val">$${rev.toLocaleString()}</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Campaign</th><th>Type</th><th>Segment</th><th>Date</th><th>Open%</th><th>Click%</th><th>Conv%</th><th>Bounce%</th><th>Revenue</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:.6rem;">Green = above industry benchmark · Red = below benchmark</p>
+    </div>`;
+  document.getElementById('runSection').style.display = 'block';
+}
+
+// ── Run analysis ──────────────────────────────────────────────────────────────
+async function runAnalysis() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { alert('Enter your Anthropic API key in the sidebar.'); return; }
+  if (!campaigns.length) { alert('No data loaded.'); return; }
+
+  const mode = document.getElementById('modeSelect').value;
+  const groupBy = document.getElementById('groupBy').value;
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Analyzing with Claude...';
+
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = '';
+  stored = { campaigns: {}, groups: {} };
+
+  try {
+    // Per-campaign
+    if (mode === 'all' || mode === 'campaigns') {
+      const sec = el('div', 'sec-heading', '📌 Per-Campaign Insights');
+      resultsEl.appendChild(sec);
+
+      for (const c of campaigns) {
+        const stats = campaignStats(c);
+        const { accEl, bodyEl, openAcc, closeAcc } = makeAccordion(`📩 ${c.campaign_name}`);
+        resultsEl.appendChild(accEl);
+        openAcc();
+
+        const out = el('div', 'insight');
+        out.innerHTML = '<em style="color:var(--muted)">Generating insights…</em>';
+        bodyEl.appendChild(out);
+
+        try {
+          const insight = await streamClaude(apiKey, campaignPrompt(c, stats), out);
+          bodyEl.appendChild(makeMetricCards(stats));
+          stored.campaigns[c.campaign_id] = { campaign: c, stats, insight };
+        } catch (e) {
+          out.innerHTML = `<div class="alert a-err">Error: ${e.message}</div>`;
+        }
+        closeAcc();
+      }
+    }
+
+    // Groups
+    if (mode === 'all' || mode === 'groups') {
+      const sec = el('div', 'sec-heading', `🗂️ Group Insights — by ${groupBy}`);
+      resultsEl.appendChild(sec);
+
+      const groups = {};
+      for (const c of campaigns) { const k = c[groupBy]||'unknown'; (groups[k]=groups[k]||[]).push(c); }
+
+      for (const [name, arr] of Object.entries(groups)) {
+        const stats = groupStats(arr);
+        const { accEl, bodyEl, openAcc, closeAcc } = makeAccordion(`📁 ${name}  (${arr.length} campaigns)`);
+        resultsEl.appendChild(accEl);
+        openAcc();
+
+        const out = el('div', 'insight');
+        out.innerHTML = '<em style="color:var(--muted)">Generating group insights…</em>';
+        bodyEl.appendChild(out);
+
+        try {
+          const insight = await streamClaude(apiKey, groupPrompt(name, arr, stats), out);
+          stored.groups[name] = { group_by: groupBy, campaigns: arr, stats, insight };
+        } catch (e) {
+          out.innerHTML = `<div class="alert a-err">Error: ${e.message}</div>`;
+        }
+        closeAcc();
+      }
+    }
+
+    // Downloads
+    const dl = document.createElement('div');
+    dl.className = 'card';
+    dl.style.marginTop = '1rem';
+    dl.innerHTML = `<div class="card-title">⬇️ Download Report</div>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="dlMarkdown()">📄 Markdown Report</button>
+        <button class="btn btn-outline" onclick="dlJSON()">📦 JSON Report</button>
+      </div>`;
+    resultsEl.appendChild(dl);
+
+    const ok = document.createElement('div');
+    ok.className = 'alert a-ok';
+    ok.textContent = '✅ Analysis complete! Expand any campaign or group above to view insights.';
+    resultsEl.appendChild(ok);
+
+  } catch (e) {
+    resultsEl.insertAdjacentHTML('beforeend', `<div class="alert a-err">Fatal error: ${e.message}</div>`);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Generate AI Insights';
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;
+  return e;
+}
+
+let _accId = 0;
+function makeAccordion(title) {
+  const id = 'acc' + (_accId++);
+  const accEl = document.createElement('div');
+  accEl.className = 'acc';
+  accEl.innerHTML = `
+    <div class="acc-hdr" id="hdr-${id}" onclick="toggleAcc('${id}')">
+      <span>${title}</span><span class="chev" id="chev-${id}">▼</span>
+    </div>
+    <div class="acc-body" id="body-${id}"></div>`;
+  const bodyEl = accEl.querySelector('.acc-body');
+  return {
+    accEl, bodyEl,
+    openAcc()  { bodyEl.classList.add('open'); accEl.querySelector('.acc-hdr').classList.add('open'); accEl.querySelector('.chev').classList.add('open'); },
+    closeAcc() { bodyEl.classList.remove('open'); accEl.querySelector('.acc-hdr').classList.remove('open'); accEl.querySelector('.chev').classList.remove('open'); },
+  };
+}
+function toggleAcc(id) {
+  ['body-','hdr-','chev-'].forEach(p => document.getElementById(p+id)?.classList.toggle('open'));
+}
+
+function makeMetricCards(stats) {
+  const wrap = document.createElement('div');
+  wrap.className = 'stat-row';
+  wrap.style.marginTop = '1rem';
+  const metrics = [
+    ['open_rate','Open Rate',false], ['click_rate','Click Rate',false],
+    ['click_to_open_rate','CTOR',false], ['conversion_rate','Conv Rate',false],
+    ['bounce_rate','Bounce Rate',true], ['unsubscribe_rate','Unsub Rate',true],
+  ];
+  for (const [key, label, lower] of metrics) {
+    const s = stats[key]; if (!s) continue;
+    const diff = s.vs_benchmark;
+    const good = lower ? diff <= 0 : diff >= 0;
+    const sign = diff > 0 ? '+' : '';
+    wrap.innerHTML += `
+      <div class="stat-box">
+        <div class="lbl">${label}</div>
+        <div class="val">${s.value}%</div>
+        <div class="delta ${good?'up':'down'}">${sign}${diff}% vs bm</div>
+      </div>`;
+  }
+  return wrap;
+}
+
+// ── Downloads ─────────────────────────────────────────────────────────────────
+function dlMarkdown() {
+  const lines = ['# Email Performance Insight Report\n'];
+  for (const d of Object.values(stored.campaigns||{})) { lines.push(d.insight, '\n---\n'); }
+  for (const d of Object.values(stored.groups||{}))    { lines.push(d.insight, '\n---\n'); }
+  saveFile('email_insights.md', lines.join('\n'), 'text/markdown');
+}
+function dlJSON() {
+  saveFile('email_insights.json', JSON.stringify(stored, null, 2), 'application/json');
+}
+function saveFile(name, content, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = name; a.click();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+const saved = sessionStorage.getItem('ak');
+if (saved) document.getElementById('apiKey').value = saved;
+document.getElementById('apiKey').addEventListener('input', e => sessionStorage.setItem('ak', e.target.value));
+loadCSV(SAMPLE);
+</script>
+</body>
+</html>
