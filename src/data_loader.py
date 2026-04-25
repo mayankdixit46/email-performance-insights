@@ -1,3 +1,4 @@
+import io
 import pandas as pd
 from pathlib import Path
 
@@ -10,10 +11,12 @@ REQUIRED_COLUMNS = [
 ]
 
 
-def load_campaign_data(filepath: str) -> pd.DataFrame:
-    path = Path(filepath)
-    if not path.exists():
-        raise FileNotFoundError(f"Data file not found: {filepath}")
+def load_campaign_data(filepath) -> pd.DataFrame:
+    # Only check file existence for real paths, not in-memory buffers
+    if isinstance(filepath, (str, Path)):
+        path = Path(filepath)
+        if not path.exists():
+            raise FileNotFoundError(f"Data file not found: {filepath}")
 
     df = pd.read_csv(filepath, parse_dates=["send_date"])
 
