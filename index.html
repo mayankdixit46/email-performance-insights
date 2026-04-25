@@ -3,451 +3,542 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Insight Architect — Email Performance</title>
+<title>📧 Email Performance Insights</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#eef0f5;color:#1a2341;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f7;color:#1a2341;display:flex;flex-direction:column;min-height:100vh;}
 
 /* ── Top Nav ──────────────────────────────────────────────────────── */
-.topnav{
-  display:flex;align-items:center;gap:1.5rem;
-  background:#fff;border-bottom:1px solid #e5e7eb;
-  padding:.75rem 1.5rem;height:60px;flex-shrink:0;z-index:10;
-}
-.topnav-brand{line-height:1.2;font-size:.75rem;color:#6b7280;min-width:120px;}
-.topnav-brand strong{font-size:1rem;color:#111827;font-weight:700;display:block;}
-.topnav-search{flex:1;max-width:340px;}
-.topnav-search input{
-  width:100%;padding:.45rem .9rem .45rem 2.25rem;border:1px solid #e5e7eb;
-  border-radius:8px;font-size:.82rem;color:#374151;background:#f9fafb;outline:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%239ca3af' viewBox='0 0 24 24'%3E%3Cpath d='M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z' stroke='%239ca3af' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:10px center;
-}
-.topnav-search input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
-.topnav-tabs{display:flex;gap:.25rem;margin-left:.5rem;}
-.topnav-tabs a{
-  padding:.4rem .9rem;border-radius:6px;font-size:.82rem;font-weight:500;
-  color:#6b7280;cursor:pointer;text-decoration:none;transition:all .15s;
-}
-.topnav-tabs a.active{color:#2563eb;font-weight:700;border-bottom:2px solid #2563eb;border-radius:0;}
-.topnav-tabs a:hover:not(.active){background:#f3f4f6;}
-.topnav-spacer{flex:1;}
-.btn-deploy{
-  background:#2563eb;color:#fff;border:none;
-  padding:.5rem 1.1rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;
-  transition:background .15s;white-space:nowrap;
-}
-.btn-deploy:hover{background:#1d4ed8;}
+.topnav{display:flex;align-items:center;gap:1rem;background:#fff;border-bottom:1px solid #e5e7eb;padding:.65rem 1.5rem;height:58px;flex-shrink:0;z-index:20;position:sticky;top:0;}
+.topnav-brand{display:flex;align-items:center;gap:.6rem;font-size:1rem;font-weight:700;color:#111827;min-width:200px;}
+.topnav-brand .emoji{font-size:1.3rem;}
+.api-row{display:flex;align-items:center;gap:.5rem;margin-left:auto;}
+.api-row label{font-size:.78rem;color:#6b7280;white-space:nowrap;}
+.api-input{padding:.4rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.82rem;width:280px;outline:none;font-family:monospace;}
+.api-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.btn-sm{padding:.4rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;}
+.btn-primary{background:#2563eb;color:#fff;}
+.btn-primary:hover{background:#1d4ed8;}
+.btn-secondary{background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;}
+.btn-secondary:hover{background:#e5e7eb;}
+.btn-danger{background:#fff;color:#dc2626;border:1px solid #fca5a5;}
+.btn-danger:hover{background:#fef2f2;}
 
-/* ── Body Layout ──────────────────────────────────────────────────── */
-.app-body{display:flex;flex:1;overflow:hidden;}
+/* ── Body ──────────────────────────────────────────────────────────── */
+.app-body{display:flex;flex:1;}
 
 /* ── Sidebar ──────────────────────────────────────────────────────── */
-.sidebar{
-  width:200px;background:#1a2341;color:#cbd5e1;
-  display:flex;flex-direction:column;flex-shrink:0;
-  padding:1.25rem 0;
-}
-.sb-brand{padding:.25rem 1.25rem 1.25rem;}
-.sb-brand .name{font-size:.95rem;font-weight:700;color:#fff;letter-spacing:.01em;}
-.sb-brand .status{display:flex;align-items:center;gap:.4rem;font-size:.68rem;color:#64748b;margin-top:.25rem;text-transform:uppercase;letter-spacing:.08em;}
-.sb-brand .dot{width:7px;height:7px;background:#22c55e;border-radius:50%;animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
-.sb-nav{flex:1;padding:.5rem 0;}
-.sb-item{
-  display:flex;align-items:center;gap:.75rem;
-  padding:.65rem 1.25rem;font-size:.82rem;font-weight:500;
-  color:#94a3b8;cursor:pointer;transition:all .15s;position:relative;
-}
+.sidebar{width:210px;background:#1a2341;color:#cbd5e1;display:flex;flex-direction:column;flex-shrink:0;padding:1.25rem 0;position:sticky;top:58px;height:calc(100vh - 58px);}
+.sb-section-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#475569;padding:.5rem 1.25rem .25rem;}
+.sb-item{display:flex;align-items:center;gap:.75rem;padding:.62rem 1.25rem;font-size:.83rem;font-weight:500;color:#94a3b8;cursor:pointer;transition:all .15s;position:relative;}
 .sb-item:hover{color:#e2e8f0;background:rgba(255,255,255,.05);}
-.sb-item.active{color:#fff;background:rgba(99,102,241,.15);}
+.sb-item.active{color:#fff;background:rgba(99,102,241,.18);}
 .sb-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#6366f1;border-radius:0 3px 3px 0;}
-.sb-item svg{width:16px;height:16px;opacity:.7;flex-shrink:0;}
+.sb-item svg{width:15px;height:15px;opacity:.7;flex-shrink:0;}
 .sb-item.active svg{opacity:1;}
-.sb-bottom{padding:1rem 1.25rem;}
-.btn-new{
-  display:flex;align-items:center;justify-content:center;gap:.5rem;
-  width:100%;padding:.65rem;background:#2563eb;color:#fff;
-  border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;
-  transition:background .15s;margin-bottom:.75rem;
-}
-.btn-new:hover{background:#1d4ed8;}
-.btn-new svg{width:15px;height:15px;}
-.sb-link{display:flex;align-items:center;gap:.6rem;font-size:.78rem;color:#64748b;padding:.35rem 0;cursor:pointer;}
-.sb-link:hover{color:#94a3b8;}
-.sb-link svg{width:14px;height:14px;}
-.sb-profile{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem;border-top:1px solid rgba(255,255,255,.07);margin-top:.5rem;}
-.sb-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#2563eb);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;}
-.sb-profile-info .pname{font-size:.8rem;color:#e2e8f0;font-weight:600;}
-.sb-profile-info .prole{font-size:.7rem;color:#64748b;}
+.sb-divider{border:none;border-top:1px solid rgba(255,255,255,.07);margin:.5rem 0;}
+.sb-data-source{padding:.75rem 1.25rem;}
+.sb-data-label{font-size:.7rem;color:#64748b;margin-bottom:.4rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;}
+.sb-radio{display:flex;flex-direction:column;gap:.3rem;}
+.sb-radio label{display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:#94a3b8;cursor:pointer;}
+.sb-radio label:hover{color:#e2e8f0;}
+.sb-radio input[type=radio]{accent-color:#6366f1;}
+.sb-profile{display:flex;align-items:center;gap:.75rem;padding:1rem 1.25rem;border-top:1px solid rgba(255,255,255,.07);margin-top:auto;}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#2563eb);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0;}
+.sb-profile-info .pname{font-size:.78rem;color:#e2e8f0;font-weight:600;}
+.sb-profile-info .prole{font-size:.68rem;color:#64748b;}
 
-/* ── Main Content ─────────────────────────────────────────────────── */
-.main{flex:1;overflow:auto;padding:1.25rem 1.5rem;display:flex;flex-direction:column;gap:1.25rem;}
-.main-grid{display:grid;grid-template-columns:230px 1fr 290px;gap:1.25rem;flex:1;min-height:0;}
+/* ── Main ──────────────────────────────────────────────────────────── */
+.main{flex:1;padding:1.5rem;overflow:auto;}
+.section{display:none;}
+.section.active{display:block;}
 
-/* ── Section Labels ───────────────────────────────────────────────── */
-.sec-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9ca3af;margin-bottom:.75rem;}
+/* ── Page Header ────────────────────────────────────────────────────── */
+.page-header{margin-bottom:1.25rem;}
+.page-title{font-size:1.3rem;font-weight:700;color:#111827;}
+.page-sub{font-size:.82rem;color:#6b7280;margin-top:.25rem;}
 
-/* ── Cards ────────────────────────────────────────────────────────── */
-.card{background:#fff;border-radius:12px;padding:1.1rem 1.25rem;box-shadow:0 1px 4px rgba(0,0,0,.06);}
-.card+.card{margin-top:.75rem;}
+/* ── Cards ──────────────────────────────────────────────────────────── */
+.card{background:#fff;border-radius:12px;padding:1.25rem;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.card-title{font-size:.85rem;font-weight:700;color:#111827;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;}
 
-/* ── Performance Core ─────────────────────────────────────────────── */
-.perf-col{display:flex;flex-direction:column;}
-.metric-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;}
-.metric-delta{font-size:.75rem;font-weight:600;margin-left:auto;display:flex;align-items:center;gap:.2rem;}
-.metric-delta.up{color:#22c55e;}
-.metric-delta.down{color:#ef4444;}
-.metric-value{font-size:1.9rem;font-weight:700;color:#111827;margin:.35rem 0 .5rem;line-height:1;}
-.metric-header{display:flex;align-items:center;}
-/* Mini bar chart */
-.bar-chart{display:flex;align-items:flex-end;gap:3px;height:38px;margin-top:.25rem;}
-.bar{width:100%;border-radius:3px 3px 0 0;background:#e5e7eb;flex:1;}
-.bar.active{background:#4ade80;}
-/* Progress bar */
-.prog-track{background:#e5e7eb;border-radius:9999px;height:6px;margin-top:.3rem;}
-.prog-fill{background:#2563eb;height:100%;border-radius:9999px;transition:width .8s ease;}
-/* Conversion prediction */
-.pred-text{font-size:.72rem;color:#6b7280;margin-top:.4rem;line-height:1.5;}
-/* Node efficiency */
-.node-row{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;}
-.node-row+.node-row{border-top:1px solid #f3f4f6;}
-.node-key{font-size:.78rem;color:#6b7280;}
-.node-val{font-size:.78rem;font-weight:600;color:#111827;}
-.node-title{display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:600;color:#111827;margin-bottom:.5rem;}
+/* ── KPI Grid ───────────────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem;}
+.kpi-card{background:#fff;border-radius:12px;padding:1.1rem 1.25rem;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.kpi-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;}
+.kpi-value{font-size:1.7rem;font-weight:700;color:#111827;margin:.3rem 0 .15rem;line-height:1;}
+.kpi-delta{font-size:.75rem;font-weight:600;}
+.kpi-delta.up{color:#16a34a;}
+.kpi-delta.down{color:#dc2626;}
+.kpi-delta.neutral{color:#6b7280;}
 
-/* ── Hero Card ────────────────────────────────────────────────────── */
-.hero-card{
-  background:linear-gradient(135deg,#071a14 0%,#0a2318 50%,#071a14 100%);
-  border-radius:14px;padding:1.75rem 1.5rem;color:#fff;position:relative;overflow:hidden;
-  min-height:220px;display:flex;flex-direction:column;justify-content:space-between;
-}
-.hero-card::before{
-  content:'';position:absolute;inset:0;
-  background-image:linear-gradient(rgba(0,255,150,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,150,.04) 1px,transparent 1px);
-  background-size:32px 32px;
-}
-.hero-card::after{
-  content:'';position:absolute;inset:0;
-  background-image:radial-gradient(circle,rgba(0,255,150,.12) 1px,transparent 1px);
-  background-size:20px 20px;pointer-events:none;
-}
-.hero-text{font-size:1.75rem;font-weight:800;line-height:1.2;position:relative;z-index:1;min-height:80px;}
-.hero-text .typing-cursor::after{content:'|';animation:blink .8s step-end infinite;margin-left:2px;}
+/* ── Chart Tabs ─────────────────────────────────────────────────────── */
+.chart-tabs{display:flex;gap:0;border-bottom:2px solid #f3f4f6;margin-bottom:1rem;}
+.chart-tab{padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.chart-tab.active{color:#2563eb;border-bottom-color:#2563eb;}
+.chart-tab:hover:not(.active){color:#374151;}
+.chart-panel{display:none;}
+.chart-panel.active{display:block;}
+
+/* ── Grid layouts ───────────────────────────────────────────────────── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;}
+
+/* ── Trend + A/B controls ───────────────────────────────────────────── */
+.control-row{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;}
+.control-row label{font-size:.82rem;font-weight:600;color:#374151;}
+select.ctrl-select{padding:.4rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.82rem;outline:none;color:#374151;background:#fff;cursor:pointer;}
+select.ctrl-select:focus{border-color:#6366f1;}
+
+/* ── Metrics comparison table ───────────────────────────────────────── */
+.metrics-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.metrics-table th{text-align:left;padding:.5rem .75rem;background:#f9fafb;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#6b7280;border-bottom:1px solid #e5e7eb;}
+.metrics-table td{padding:.5rem .75rem;border-bottom:1px solid #f3f4f6;color:#374151;}
+.metrics-table tr:last-child td{border-bottom:none;}
+.winner-badge{display:inline-block;padding:.1rem .4rem;border-radius:4px;font-size:.68rem;font-weight:700;}
+.winner-badge.a{background:#dbeafe;color:#1d4ed8;}
+.winner-badge.b{background:#d1fae5;color:#065f46;}
+.winner-badge.tie{background:#f3f4f6;color:#6b7280;}
+
+/* ── AI Insight output ──────────────────────────────────────────────── */
+.insight-tabs{display:flex;gap:0;border-bottom:2px solid #f3f4f6;margin-bottom:1.25rem;}
+.insight-tab{padding:.5rem 1.1rem;font-size:.82rem;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.insight-tab.active{color:#2563eb;border-bottom-color:#2563eb;}
+.insight-tab:hover:not(.active){color:#374151;}
+.insight-panel{display:none;}
+.insight-panel.active{display:block;}
+.insight-output{min-height:120px;line-height:1.7;font-size:.85rem;color:#1f2937;}
+.insight-output h2{font-size:1rem;font-weight:700;margin:1rem 0 .4rem;color:#111827;}
+.insight-output h3{font-size:.9rem;font-weight:700;margin:.9rem 0 .35rem;color:#111827;}
+.insight-output h4{font-size:.85rem;font-weight:700;margin:.75rem 0 .3rem;color:#374151;}
+.insight-output ul,.insight-output ol{padding-left:1.25rem;margin:.35rem 0;}
+.insight-output li{margin:.2rem 0;}
+.insight-output p{margin:.4rem 0;}
+.insight-output strong{color:#111827;}
+.insight-output hr{border:none;border-top:1px solid #e5e7eb;margin:1rem 0;}
+.insight-output table{width:100%;border-collapse:collapse;font-size:.82rem;margin:.5rem 0;}
+.insight-output table th{background:#f9fafb;padding:.4rem .6rem;font-weight:700;font-size:.72rem;text-transform:uppercase;color:#6b7280;border:1px solid #e5e7eb;}
+.insight-output table td{padding:.4rem .6rem;border:1px solid #f3f4f6;}
+
+/* ── Campaign accordion ─────────────────────────────────────────────── */
+.accordion-item{border:1px solid #e5e7eb;border-radius:10px;margin-bottom:.6rem;overflow:hidden;}
+.accordion-header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:#fafafa;cursor:pointer;font-size:.85rem;font-weight:600;color:#111827;}
+.accordion-header:hover{background:#f3f4f6;}
+.accordion-header .acc-arrow{font-size:.7rem;color:#9ca3af;transition:transform .2s;}
+.accordion-header.open .acc-arrow{transform:rotate(180deg);}
+.accordion-body{display:none;padding:1rem;border-top:1px solid #e5e7eb;}
+.accordion-body.open{display:block;}
+
+/* ── Group selector ─────────────────────────────────────────────────── */
+.group-options{display:flex;gap:.5rem;margin-bottom:1rem;}
+.group-chip{padding:.35rem .85rem;border-radius:20px;font-size:.78rem;font-weight:600;border:1px solid #d1d5db;background:#fff;cursor:pointer;color:#6b7280;transition:all .15s;}
+.group-chip.active{background:#2563eb;color:#fff;border-color:#2563eb;}
+
+/* ── Upload area ────────────────────────────────────────────────────── */
+.upload-area{border:2px dashed #d1d5db;border-radius:10px;padding:1.5rem;text-align:center;cursor:pointer;transition:all .15s;background:#fafafa;}
+.upload-area:hover{border-color:#6366f1;background:#f5f3ff;}
+.upload-area.drag-over{border-color:#6366f1;background:#eef2ff;}
+.upload-area p{font-size:.82rem;color:#6b7280;margin-top:.4rem;}
+
+/* ── Batch section ──────────────────────────────────────────────────── */
+.batch-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;}
+.batch-id-display{font-family:monospace;font-size:.78rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:.5rem .75rem;color:#374151;word-break:break-all;min-height:2rem;}
+
+/* ── Download section ───────────────────────────────────────────────── */
+.download-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.download-card{border:1px solid #e5e7eb;border-radius:10px;padding:1.25rem;display:flex;flex-direction:column;gap:.75rem;align-items:flex-start;}
+.download-card .dl-title{font-size:.9rem;font-weight:700;color:#111827;}
+.download-card .dl-desc{font-size:.78rem;color:#6b7280;line-height:1.5;}
+
+/* ── Loading / status ───────────────────────────────────────────────── */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e5e7eb;border-top-color:#2563eb;border-radius:50%;animation:spin .6s linear infinite;margin-right:.4rem;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.status-bar{font-size:.78rem;color:#6b7280;display:flex;align-items:center;gap:.4rem;margin-top:.5rem;min-height:1.5rem;}
+.status-bar.error{color:#dc2626;}
+.status-bar.success{color:#16a34a;}
+.cursor-blink{animation:blink .8s step-end infinite;}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
-.hero-actions{display:flex;gap:.75rem;position:relative;z-index:1;margin-top:1rem;}
-.btn-hero-primary{
-  display:flex;align-items:center;gap:.5rem;
-  background:#2563eb;color:#fff;border:none;
-  padding:.6rem 1.1rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;
-  transition:background .15s;
-}
-.btn-hero-primary:hover{background:#1d4ed8;}
-.btn-hero-secondary{
-  display:flex;align-items:center;gap:.5rem;
-  background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.15);
-  padding:.6rem 1.1rem;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;
-  transition:all .15s;backdrop-filter:blur(4px);
-}
-.btn-hero-secondary:hover{background:rgba(255,255,255,.18);}
 
-/* ── Validated Wins ───────────────────────────────────────────────── */
-.wins-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.25rem;}
-.win-card{
-  background:#fff;border-radius:10px;padding:1rem;
-  box-shadow:0 1px 4px rgba(0,0,0,.06);border-left:3px solid #22c55e;
-}
-.win-check{width:22px;height:22px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:.6rem;}
-.win-check svg{width:12px;height:12px;color:#16a34a;}
-.win-title{font-size:.85rem;font-weight:700;color:#111827;margin-bottom:.35rem;}
-.win-desc{font-size:.75rem;color:#6b7280;line-height:1.5;}
-.win-time{font-size:.65rem;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-top:.5rem;}
+/* ── Alert / info boxes ─────────────────────────────────────────────── */
+.alert{padding:.75rem 1rem;border-radius:8px;font-size:.82rem;margin-bottom:1rem;}
+.alert-info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;}
+.alert-warn{background:#fffbeb;color:#92400e;border:1px solid #fde68a;}
+.alert-success{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;}
 
-/* ── Insight Stream ───────────────────────────────────────────────── */
-.stream-col{display:flex;flex-direction:column;gap:.75rem;overflow-y:auto;}
-.stream-card{background:#fff;border-radius:10px;padding:1rem;box-shadow:0 1px 4px rgba(0,0,0,.06);}
-.stream-card-top{display:flex;gap:.75rem;align-items:flex-start;}
-.stream-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.icon-critical{background:#fff7ed;}
-.icon-optimized{background:#eff6ff;}
-.icon-queued{background:#f9fafb;}
-.icon-health{background:#eff6ff;}
-.stream-badge{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;}
-.badge-critical{color:#f59e0b;}
-.badge-optimized{color:#22c55e;}
-.badge-queued{color:#9ca3af;}
-.badge-health{color:#2563eb;}
-.stream-title{font-size:.85rem;font-weight:700;color:#111827;margin-bottom:.3rem;}
-.stream-desc{font-size:.75rem;color:#6b7280;line-height:1.5;}
-.stream-footer{display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;}
-.stream-time{font-size:.7rem;color:#9ca3af;}
-.stream-resolve{font-size:.72rem;font-weight:700;color:#2563eb;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;}
-.stream-resolve:hover{text-decoration:underline;}
-.stream-check{width:18px;height:18px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;}
-.stream-clock{width:18px;height:18px;background:#f3f4f6;border-radius:50%;display:flex;align-items:center;justify-content:center;}
-.sys-health-card{background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1px solid #dbeafe;}
-.sys-health-top{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;}
-.sys-icon{width:36px;height:36px;background:#dbeafe;border-radius:10px;display:flex;align-items:center;justify-content:center;}
-.sys-uptime{font-size:.82rem;font-weight:700;color:#1e40af;}
-.sys-quote{font-size:.73rem;color:#6b7280;font-style:italic;line-height:1.5;border-top:1px solid rgba(0,0,0,.06);padding-top:.5rem;margin-top:.5rem;}
+/* ── Data preview table ─────────────────────────────────────────────── */
+.data-table-wrap{overflow-x:auto;max-height:280px;overflow-y:auto;border-radius:8px;border:1px solid #e5e7eb;}
+.data-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.data-table th{position:sticky;top:0;background:#f9fafb;padding:.4rem .65rem;font-weight:700;font-size:.68rem;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;white-space:nowrap;}
+.data-table td{padding:.4rem .65rem;border-bottom:1px solid #f3f4f6;color:#374151;white-space:nowrap;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:#f9fafb;}
+.badge{display:inline-block;padding:.1rem .45rem;border-radius:4px;font-size:.68rem;font-weight:700;}
+.badge-green{background:#d1fae5;color:#065f46;}
+.badge-red{background:#fee2e2;color:#991b1b;}
+.badge-blue{background:#dbeafe;color:#1d4ed8;}
+.badge-purple{background:#ede9fe;color:#5b21b6;}
+.badge-yellow{background:#fef9c3;color:#713f12;}
 
-/* ── Loading skeleton ─────────────────────────────────────────────── */
-.skeleton{background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px;}
-@keyframes shimmer{to{background-position:-200% 0;}}
-.skel-line{height:12px;border-radius:4px;margin:.35rem 0;}
-.skel-line.w80{width:80%;}
-.skel-line.w60{width:60%;}
-.skel-line.w40{width:40%;}
-
-/* ── Scrollbar ────────────────────────────────────────────────────── */
-::-webkit-scrollbar{width:5px;}
+/* ── Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:9999px;}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media(max-width:900px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .two-col{grid-template-columns:1fr;}
+  .sidebar{width:170px;}
+  .api-input{width:180px;}
+}
 </style>
 </head>
 <body>
 
-<!-- ══ Top Nav ════════════════════════════════════════════════════════ -->
+<!-- ══ Top Nav ══════════════════════════════════════════════════════════ -->
 <nav class="topnav">
   <div class="topnav-brand">
-    <span>Insight</span>
-    <strong>Architect</strong>
+    <span class="emoji">📧</span>
+    Email Performance Insights
   </div>
-  <div class="topnav-search">
-    <input type="text" placeholder="Explore neural nodes..." />
+  <div class="api-row">
+    <label for="apiKeyInput">API Key</label>
+    <input id="apiKeyInput" class="api-input" type="password" placeholder="sk-ant-..." autocomplete="off"/>
+    <button class="btn-sm btn-secondary" onclick="toggleApiKeyVisibility()">Show</button>
   </div>
-  <div class="topnav-tabs">
-    <a class="active">Network</a>
-    <a>Deployment</a>
-    <a>Security</a>
-  </div>
-  <div class="topnav-spacer"></div>
-  <button class="btn-deploy">Deploy Optimization</button>
 </nav>
 
 <div class="app-body">
 
-<!-- ══ Sidebar ════════════════════════════════════════════════════════ -->
+<!-- ══ Sidebar ══════════════════════════════════════════════════════════ -->
 <aside class="sidebar">
-  <div class="sb-brand">
-    <div class="name">The Architect</div>
-    <div class="status"><span class="dot"></span>System Active</div>
+  <div class="sb-section-label">Navigation</div>
+
+  <div class="sb-item active" data-section="dashboard" onclick="showSection('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </div>
+  <div class="sb-item" data-section="trends" onclick="showSection('trends')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Trends
+  </div>
+  <div class="sb-item" data-section="ab" onclick="showSection('ab')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    A/B Compare
+  </div>
+  <div class="sb-item" data-section="insights" onclick="showSection('insights')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    AI Insights
+  </div>
+  <div class="sb-item" data-section="batch" onclick="showSection('batch')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+    Batch Mode
   </div>
 
-  <nav class="sb-nav">
-    <div class="sb-item active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      Intelligence
+  <hr class="sb-divider"/>
+  <div class="sb-section-label">Data Source</div>
+  <div class="sb-data-source">
+    <div class="sb-radio">
+      <label><input type="radio" name="datasource" value="sample" checked onchange="onDataSourceChange()"> Sample data</label>
+      <label><input type="radio" name="datasource" value="upload" onchange="onDataSourceChange()"> Upload CSV</label>
     </div>
-    <div class="sb-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      Optimizations
+    <div id="uploadAreaWrap" style="display:none;margin-top:.75rem;">
+      <div class="upload-area" onclick="document.getElementById('csvInput').click()" id="uploadArea">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <p>Click to upload CSV</p>
+      </div>
+      <input id="csvInput" type="file" accept=".csv" style="display:none" onchange="onCsvUpload(event)"/>
+      <div id="uploadStatus" class="status-bar" style="margin-top:.4rem;"></div>
     </div>
-    <div class="sb-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      Architecture
-    </div>
-    <div class="sb-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-      Archives
-    </div>
-    <div class="sb-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
-      Settings
-    </div>
-  </nav>
+  </div>
 
-  <div class="sb-bottom">
-    <button class="btn-new" onclick="location.reload()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      New Analysis
-    </button>
-    <div class="sb-link">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Documentation
-    </div>
-    <div class="sb-link">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      Support
-    </div>
+  <hr class="sb-divider"/>
+  <div class="sb-item" data-section="download" onclick="showSection('download')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download Report
   </div>
 
   <div class="sb-profile">
     <div class="sb-avatar">MD</div>
     <div class="sb-profile-info">
       <div class="pname">Mayank Dixit</div>
-      <div class="prole">System Admin</div>
+      <div class="prole">Analyst</div>
     </div>
   </div>
 </aside>
 
-<!-- ══ Main ═══════════════════════════════════════════════════════════ -->
+<!-- ══ Main ═════════════════════════════════════════════════════════════ -->
 <div class="main">
-  <div class="main-grid">
 
-    <!-- ── Performance Core ────────────────────────────────────────── -->
-    <div class="perf-col">
-      <div class="sec-label">Performance Core</div>
+  <!-- ── Dashboard ──────────────────────────────────────────────────── -->
+  <div id="section-dashboard" class="section active">
+    <div class="page-header">
+      <div class="page-title">Performance Dashboard</div>
+      <div class="page-sub">Campaign averages, revenue breakdown, and metric heatmap</div>
+    </div>
 
-      <!-- Open Rate -->
-      <div class="card">
-        <div class="metric-header">
-          <div class="metric-label">Open Rate</div>
-          <div class="metric-delta up" id="or-delta">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg>
-            <span id="or-delta-val">+0.0%</span>
-          </div>
-        </div>
-        <div class="metric-value" id="or-val">—</div>
-        <div class="bar-chart" id="or-bars">
-          <div class="bar" style="height:45%"></div>
-          <div class="bar" style="height:55%"></div>
-          <div class="bar" style="height:40%"></div>
-          <div class="bar" style="height:65%"></div>
-          <div class="bar" style="height:70%"></div>
-          <div class="bar active" style="height:90%"></div>
-        </div>
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Campaigns</div>
+        <div class="kpi-value" id="kpi-campaigns">—</div>
+        <div class="kpi-delta neutral" id="kpi-campaigns-sub">—</div>
       </div>
-
-      <!-- CTR -->
-      <div class="card">
-        <div class="metric-header">
-          <div class="metric-label">CTR</div>
-          <div class="metric-delta up" id="ctr-delta">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg>
-            <span id="ctr-delta-val">+0.0%</span>
-          </div>
-        </div>
-        <div class="metric-value" id="ctr-val">—</div>
-        <div class="prog-track"><div class="prog-fill" id="ctr-fill" style="width:0%"></div></div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Sent</div>
+        <div class="kpi-value" id="kpi-sent">—</div>
+        <div class="kpi-delta neutral" id="kpi-sent-sub">—</div>
       </div>
-
-      <!-- Conversion -->
-      <div class="card">
-        <div class="metric-header">
-          <div class="metric-label">Conversion</div>
-          <div class="metric-delta" id="conv-delta">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 9 12 15 6 9"/></svg>
-            <span id="conv-delta-val">-0.0%</span>
-          </div>
-        </div>
-        <div class="metric-value" id="conv-val">—</div>
-        <div class="pred-text" id="conv-pred">Predicted lift: +0.4% with AI Auto-optimization.</div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg Open Rate</div>
+        <div class="kpi-value" id="kpi-openrate">—</div>
+        <div class="kpi-delta" id="kpi-openrate-delta">—</div>
       </div>
-
-      <!-- Node Efficiency -->
-      <div class="card">
-        <div class="node-title">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          Node Efficiency
-        </div>
-        <div class="node-row">
-          <span class="node-key">Compute Load</span>
-          <span class="node-val" id="node-load">—</span>
-        </div>
-        <div class="node-row">
-          <span class="node-key">Token Density</span>
-          <span class="node-val" id="node-density">—</span>
-        </div>
-        <div class="node-row">
-          <span class="node-key">Campaigns Active</span>
-          <span class="node-val" id="node-campaigns">15</span>
-        </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value" id="kpi-revenue">—</div>
+        <div class="kpi-delta neutral" id="kpi-revenue-sub">—</div>
       </div>
     </div>
 
-    <!-- ── Center Column ────────────────────────────────────────────── -->
-    <div>
-      <!-- Hero Card -->
-      <div class="hero-card" id="heroCard">
-        <div class="hero-text" id="heroText">
-          <div class="skeleton skel-line w80" style="height:28px;margin-bottom:.5rem;"></div>
-          <div class="skeleton skel-line w60" style="height:28px;"></div>
-        </div>
-        <div class="hero-actions">
-          <button class="btn-hero-primary" onclick="showDetailedAnalysis()">
-            Detailed Analysis
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-          <button class="btn-hero-secondary" onclick="rerunAnalysis()">
-            Adjust Constraints
-          </button>
-        </div>
+    <!-- Charts -->
+    <div class="card">
+      <div class="chart-tabs">
+        <div class="chart-tab active" onclick="switchChartTab('benchmark')">Benchmarks</div>
+        <div class="chart-tab" onclick="switchChartTab('revenue')">Revenue</div>
+        <div class="chart-tab" onclick="switchChartTab('heatmap')">Heatmap</div>
       </div>
+      <div id="chart-panel-benchmark" class="chart-panel active"><div id="chart-benchmark" style="height:360px;"></div></div>
+      <div id="chart-panel-revenue" class="chart-panel"><div id="chart-revenue" style="height:420px;"></div></div>
+      <div id="chart-panel-heatmap" class="chart-panel"><div id="chart-heatmap" style="height:360px;"></div></div>
+    </div>
 
-      <!-- Recent Validated Wins -->
-      <div style="margin-top:1.1rem;">
-        <div class="sec-label">Recent Validated Wins</div>
-        <div class="wins-grid" id="winsGrid">
-          <div class="win-card">
-            <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <div class="skeleton skel-line w80" style="height:12px;margin-bottom:.35rem;"></div>
-            <div class="skeleton skel-line w60" style="height:10px;"></div>
-            <div class="skeleton skel-line w40" style="height:10px;margin-top:.75rem;"></div>
-          </div>
-          <div class="win-card">
-            <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <div class="skeleton skel-line w80" style="height:12px;margin-bottom:.35rem;"></div>
-            <div class="skeleton skel-line w60" style="height:10px;"></div>
-            <div class="skeleton skel-line w40" style="height:10px;margin-top:.75rem;"></div>
-          </div>
-        </div>
+    <!-- Data Preview -->
+    <div class="card" style="margin-top:1.25rem;">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        Data Preview
+      </div>
+      <div class="data-table-wrap"><table class="data-table" id="preview-table"></table></div>
+    </div>
+  </div>
+
+  <!-- ── Trends ─────────────────────────────────────────────────────── -->
+  <div id="section-trends" class="section">
+    <div class="page-header">
+      <div class="page-title">Trend Analysis</div>
+      <div class="page-sub">Track any metric across campaigns over time, compared to industry benchmark</div>
+    </div>
+    <div class="card">
+      <div class="control-row">
+        <label>Metric</label>
+        <select class="ctrl-select" id="trend-metric" onchange="renderTrendChart()">
+          <option value="open_rate">Open Rate</option>
+          <option value="click_rate">Click Rate</option>
+          <option value="click_to_open_rate">Click-to-Open Rate</option>
+          <option value="conversion_rate">Conversion Rate</option>
+          <option value="bounce_rate">Bounce Rate</option>
+          <option value="unsubscribe_rate">Unsubscribe Rate</option>
+        </select>
+        <label style="margin-left:.5rem;">Group by</label>
+        <select class="ctrl-select" id="trend-groupby" onchange="renderTrendChart()">
+          <option value="none">None (all campaigns)</option>
+          <option value="campaign_type">Campaign Type</option>
+          <option value="segment">Segment</option>
+        </select>
+      </div>
+      <div id="chart-trend" style="height:420px;"></div>
+    </div>
+  </div>
+
+  <!-- ── A/B Compare ─────────────────────────────────────────────────── -->
+  <div id="section-ab" class="section">
+    <div class="page-header">
+      <div class="page-title">A/B Campaign Comparison</div>
+      <div class="page-sub">Select two campaigns to compare metrics, charts, and get an AI head-to-head analysis</div>
+    </div>
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="control-row">
+        <label>Campaign A</label>
+        <select class="ctrl-select" id="ab-campaign-a" onchange="renderAbCharts()"></select>
+        <label style="margin-left:.5rem;">Campaign B</label>
+        <select class="ctrl-select" id="ab-campaign-b" onchange="renderAbCharts()"></select>
+      </div>
+      <div id="chart-ab-bar" style="height:360px;"></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Radar Comparison</div>
+        <div id="chart-ab-radar" style="height:360px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Side-by-Side Metrics</div>
+        <div id="ab-metrics-table"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1.25rem;">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        AI Comparison Insight
+      </div>
+      <button class="btn-sm btn-primary" onclick="generateAbInsight()">Generate AI Analysis</button>
+      <div id="ab-status" class="status-bar" style="margin-top:.5rem;"></div>
+      <div id="ab-insight-output" class="insight-output" style="margin-top:.75rem;"></div>
+    </div>
+  </div>
+
+  <!-- ── AI Insights ─────────────────────────────────────────────────── -->
+  <div id="section-insights" class="section">
+    <div class="page-header">
+      <div class="page-title">AI Insights</div>
+      <div class="page-sub">Claude Opus 4.6 — streaming insights with prompt caching</div>
+    </div>
+    <div class="alert alert-info">
+      Insights are streamed live using the Anthropic API. The system prompt is cached across calls,
+      reducing token cost for multi-campaign analysis. Your API key is only sent directly to
+      <strong>api.anthropic.com</strong> — never stored anywhere.
+    </div>
+    <div class="insight-tabs">
+      <div class="insight-tab active" onclick="switchInsightTab('exec')">Executive Summary</div>
+      <div class="insight-tab" onclick="switchInsightTab('campaigns')">Per Campaign</div>
+      <div class="insight-tab" onclick="switchInsightTab('groups')">Group Analysis</div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div id="insight-panel-exec" class="insight-panel active">
+      <div class="card">
+        <div class="card-title">Portfolio-Level Executive Summary</div>
+        <button class="btn-sm btn-primary" onclick="generateExecSummary()">Generate Executive Summary</button>
+        <div id="exec-status" class="status-bar" style="margin-top:.5rem;"></div>
+        <div id="exec-insight-output" class="insight-output" style="margin-top:.75rem;"></div>
       </div>
     </div>
 
-    <!-- ── Insight Stream ───────────────────────────────────────────── -->
-    <div class="stream-col">
-      <div class="sec-label">Insight Stream</div>
-      <div id="streamCards">
-        <!-- Skeleton placeholders -->
-        <div class="stream-card">
-          <div class="skeleton skel-line w40" style="height:9px;"></div>
-          <div class="skeleton skel-line w80" style="height:13px;margin:.4rem 0;"></div>
-          <div class="skeleton skel-line w60" style="height:10px;"></div>
-        </div>
-        <div class="stream-card">
-          <div class="skeleton skel-line w40" style="height:9px;"></div>
-          <div class="skeleton skel-line w80" style="height:13px;margin:.4rem 0;"></div>
-          <div class="skeleton skel-line w60" style="height:10px;"></div>
-        </div>
-        <div class="stream-card">
-          <div class="skeleton skel-line w40" style="height:9px;"></div>
-          <div class="skeleton skel-line w60" style="height:13px;margin:.4rem 0;"></div>
-        </div>
-        <!-- System Health (static) -->
-        <div class="stream-card sys-health-card">
-          <div class="sys-health-top">
-            <div class="sys-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            </div>
-            <div>
-              <div class="stream-badge badge-health">System Health</div>
-              <div class="sys-uptime">99.98% Uptime</div>
-            </div>
-          </div>
-          <div class="sys-quote">"Your architecture is currently performing in the top 5% of global peers."</div>
-        </div>
+    <!-- Per Campaign -->
+    <div id="insight-panel-campaigns" class="insight-panel">
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-title">Generate for All Campaigns</div>
+        <button class="btn-sm btn-primary" onclick="generateAllCampaigns()">Generate All</button>
+        <span style="margin-left:.75rem;font-size:.78rem;color:#6b7280;">or expand a campaign below to generate individually</span>
+        <div id="all-campaigns-status" class="status-bar" style="margin-top:.5rem;"></div>
       </div>
+      <div id="campaign-accordions"></div>
     </div>
 
-  </div><!-- /main-grid -->
+    <!-- Group Analysis -->
+    <div id="insight-panel-groups" class="insight-panel">
+      <div class="card">
+        <div class="card-title">Group by</div>
+        <div class="group-options">
+          <div class="group-chip active" id="grp-chip-type" onclick="switchGroupBy('campaign_type')">Campaign Type</div>
+          <div class="group-chip" id="grp-chip-segment" onclick="switchGroupBy('segment')">Segment</div>
+        </div>
+        <button class="btn-sm btn-primary" onclick="generateAllGroups()">Generate Group Insights</button>
+        <div id="groups-status" class="status-bar" style="margin-top:.5rem;"></div>
+      </div>
+      <div id="group-accordions" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <!-- ── Batch Mode ──────────────────────────────────────────────────── -->
+  <div id="section-batch" class="section">
+    <div class="page-header">
+      <div class="page-title">Batch Mode</div>
+      <div class="page-sub">Submit all campaigns to the Anthropic Batches API — ~50% cheaper, results ready in minutes</div>
+    </div>
+    <div class="alert alert-warn">
+      Batch processing is async. After submitting, you can close this page and come back later.
+      Results are stored by Anthropic for 29 days. Save your batch ID after submitting.
+    </div>
+    <div class="batch-grid">
+      <div class="card">
+        <div class="card-title">Submit Batch</div>
+        <p style="font-size:.82rem;color:#6b7280;margin-bottom:.75rem;">
+          Submits all <strong id="batch-campaign-count">—</strong> campaigns as a single batch request.
+          Requires your API key.
+        </p>
+        <button class="btn-sm btn-primary" onclick="submitBatch()">Submit Batch</button>
+        <div id="submit-status" class="status-bar" style="margin-top:.5rem;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Batch ID</div>
+        <p style="font-size:.78rem;color:#6b7280;margin-bottom:.5rem;">Save this ID to retrieve results later</p>
+        <div class="batch-id-display" id="batch-id-display">—</div>
+        <button class="btn-sm btn-secondary" style="margin-top:.5rem;" onclick="copyBatchId()">Copy ID</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-title">Check & Retrieve Results</div>
+      <div class="control-row">
+        <input id="batch-id-input" type="text" placeholder="msgbatch_..." class="api-input" style="width:340px;font-size:.82rem;"/>
+        <button class="btn-sm btn-secondary" onclick="checkBatchStatus()">Check Status</button>
+        <button class="btn-sm btn-primary" onclick="retrieveBatchResults()">Retrieve Results</button>
+      </div>
+      <div id="batch-status-display" class="status-bar" style="margin-top:.25rem;font-size:.82rem;"></div>
+    </div>
+    <div id="batch-results-container" style="display:none;">
+      <div class="card">
+        <div class="card-title">Batch Results</div>
+        <div id="batch-results-accordions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Download ────────────────────────────────────────────────────── -->
+  <div id="section-download" class="section">
+    <div class="page-header">
+      <div class="page-title">Download Report</div>
+      <div class="page-sub">Export generated insights and data</div>
+    </div>
+    <div class="download-grid">
+      <div class="card download-card">
+        <div class="dl-title">📄 Markdown Report</div>
+        <div class="dl-desc">All generated AI insights formatted as a readable Markdown document. Includes executive summary, per-campaign insights, and group analysis.</div>
+        <button class="btn-sm btn-primary" onclick="downloadMarkdown()">Download .md</button>
+      </div>
+      <div class="card download-card">
+        <div class="dl-title">📦 JSON Report</div>
+        <div class="dl-desc">Full structured data export including campaign metrics, computed stats, and all AI-generated insights as a machine-readable JSON file.</div>
+        <button class="btn-sm btn-primary" onclick="downloadJSON()">Download .json</button>
+      </div>
+      <div class="card download-card">
+        <div class="dl-title">📊 Campaign Data CSV</div>
+        <div class="dl-desc">The enriched campaign dataset with all computed rate columns (open_rate, click_rate, CTOR, conversion_rate, bounce_rate, unsubscribe_rate).</div>
+        <button class="btn-sm btn-primary" onclick="downloadCsv()">Download .csv</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /main -->
 </div><!-- /app-body -->
 
-<!-- ══ Detail Modal ═══════════════════════════════════════════════════ -->
-<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;overflow:auto;padding:2rem;">
-  <div style="background:#fff;border-radius:16px;max-width:760px;margin:0 auto;padding:2rem;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-      <h2 style="font-size:1.1rem;font-weight:700;">Detailed Campaign Analysis</h2>
-      <button onclick="document.getElementById('modal').style.display='none'" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:#6b7280;">✕</button>
-    </div>
-    <div id="modalContent" style="font-size:.85rem;line-height:1.75;color:#374151;"></div>
-  </div>
-</div>
-
 <script>
+// ══════════════════════════════════════════════════════════════════════════════
+// CONSTANTS & CONFIG
+// ══════════════════════════════════════════════════════════════════════════════
+const BENCHMARKS = {
+  open_rate: 21.5, click_rate: 2.3, click_to_open_rate: 10.5,
+  conversion_rate: 3.5, bounce_rate: 0.7, unsubscribe_rate: 0.1,
+};
 
-// ══ Sample campaign data ════════════════════════════════════════════════════
+const RATE_METRICS = ['open_rate','click_rate','click_to_open_rate','conversion_rate','bounce_rate','unsubscribe_rate'];
+const POSITIVE_METRICS = ['open_rate','click_rate','click_to_open_rate','conversion_rate'];
+const NEGATIVE_METRICS = ['bounce_rate','unsubscribe_rate'];
+const METRIC_LABELS = {
+  open_rate:'Open Rate', click_rate:'Click Rate', click_to_open_rate:'CTOR',
+  conversion_rate:'Conversion Rate', bounce_rate:'Bounce Rate', unsubscribe_rate:'Unsub Rate',
+};
+
+const SYSTEM_PROMPT = `You are an expert email marketing analyst and strategist with deep knowledge of campaign optimisation, audience segmentation, A/B testing, deliverability, and performance benchmarking. You are precise, data-driven, and always tie your recommendations to specific numbers from the data provided.`;
+
+const MODEL = 'claude-opus-4-6';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SAMPLE DATA
+// ══════════════════════════════════════════════════════════════════════════════
 const RAW_CSV = `campaign_id,campaign_name,campaign_type,segment,send_date,subject_line,total_sent,total_delivered,total_opened,total_clicked,total_converted,total_bounced,total_unsubscribed,revenue_generated
 C001,Black Friday Sale,promotional,all_subscribers,2024-11-29,50% off everything,45000,43200,12960,3888,778,1800,450,58350
 C002,Cyber Monday Final Hours,promotional,all_subscribers,2024-12-02,40% off ends at midnight,45000,43500,17400,6960,1392,1500,390,104400
@@ -465,154 +556,1017 @@ C013,Spring Collection Launch,promotional,all_subscribers,2025-03-01,Shop the ne
 C014,Re-engagement Offer,re_engagement,inactive_60d,2025-03-10,15% off re-engagement,9500,9025,1624,325,65,475,285,1950
 C015,March Newsletter,newsletter,all_subscribers,2025-03-15,March roundup insights,40000,39200,8624,1034,0,800,240,0`;
 
-const BENCHMARKS = { open_rate:21.5, click_rate:2.3, click_to_open_rate:10.5, conversion_rate:3.5, bounce_rate:0.7, unsubscribe_rate:0.1 };
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA LAYER
+// ══════════════════════════════════════════════════════════════════════════════
+let campaigns = [];
+let currentGroupBy = 'campaign_type';
 
-// ══ Parse & compute ═════════════════════════════════════════════════════════
+// Insight store (for downloads)
+const insightStore = { exec: '', campaigns: {}, groups: {} };
+
 function parseCSV(txt) {
-  const lines = txt.trim().split('\n'), hdrs = lines[0].split(',');
-  return lines.slice(1).map(l => { const v=l.split(','), r={}; hdrs.forEach((h,i)=>r[h.trim()]=(v[i]||'').trim()); return r; });
+  const result = Papa.parse(txt.trim(), { header: true, skipEmptyLines: true });
+  return result.data;
 }
-function compute(r) {
-  const n=v=>parseFloat(v)||0, d=n(r.total_delivered), o=n(r.total_opened), cl=n(r.total_clicked), cv=n(r.total_converted), s=n(r.total_sent), b=n(r.total_bounced), u=n(r.total_unsubscribed);
-  return {...r, open_rate:d?+((o/d)*100).toFixed(2):0, click_rate:d?+((cl/d)*100).toFixed(2):0, click_to_open_rate:o?+((cl/o)*100).toFixed(2):0, conversion_rate:cl?+((cv/cl)*100).toFixed(2):0, bounce_rate:s?+((b/s)*100).toFixed(2):0, unsubscribe_rate:d?+((u/d)*100).toFixed(2):0};
-}
-const campaigns = parseCSV(RAW_CSV).map(compute);
 
-// ══ Compute summary metrics ══════════════════════════════════════════════════
-function avg(arr, key) { return +(arr.reduce((a,c)=>a+(parseFloat(c[key])||0),0)/arr.length).toFixed(2); }
-const metrics = {
-  open_rate: avg(campaigns,'open_rate'),
-  click_rate: avg(campaigns,'click_rate'),
-  conversion_rate: avg(campaigns,'conversion_rate'),
-  bounce_rate: avg(campaigns,'bounce_rate'),
-  total_revenue: campaigns.reduce((a,c)=>a+(parseFloat(c.revenue_generated)||0),0),
-  total_sent: campaigns.reduce((a,c)=>a+(parseInt(c.total_sent)||0),0),
+function computeRow(r) {
+  const n = v => parseFloat(v) || 0;
+  const d = n(r.total_delivered), o = n(r.total_opened), cl = n(r.total_clicked),
+        cv = n(r.total_converted), s = n(r.total_sent), b = n(r.total_bounced),
+        u = n(r.total_unsubscribed);
+  return {
+    ...r,
+    open_rate:         d  ? +((o/d)*100).toFixed(2) : 0,
+    click_rate:        d  ? +((cl/d)*100).toFixed(2) : 0,
+    click_to_open_rate:o  ? +((cl/o)*100).toFixed(2) : 0,
+    conversion_rate:   cl ? +((cv/cl)*100).toFixed(2) : 0,
+    bounce_rate:       s  ? +((b/s)*100).toFixed(2) : 0,
+    unsubscribe_rate:  d  ? +((u/d)*100).toFixed(2) : 0,
+    revenue_generated: n(r.revenue_generated),
+    total_sent: parseInt(r.total_sent)||0,
+    total_delivered: parseInt(r.total_delivered)||0,
+    total_opened: parseInt(r.total_opened)||0,
+    total_clicked: parseInt(r.total_clicked)||0,
+    total_converted: parseInt(r.total_converted)||0,
+    total_bounced: parseInt(r.total_bounced)||0,
+    total_unsubscribed: parseInt(r.total_unsubscribed)||0,
+  };
+}
+
+function loadData(csvText) {
+  const raw = parseCSV(csvText);
+  campaigns = raw.map(computeRow);
+  onDataLoaded();
+}
+
+function avg(arr, key) {
+  const vals = arr.map(c => parseFloat(c[key])||0);
+  return +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2);
+}
+
+function getOverallSummary() {
+  const totalRevenue = campaigns.reduce((s,c)=>s+(c.revenue_generated||0),0);
+  const totalSent = campaigns.reduce((s,c)=>s+(c.total_sent||0),0);
+  return {
+    total_campaigns: campaigns.length,
+    total_sent: totalSent,
+    total_revenue: Math.round(totalRevenue),
+    avg_open_rate: avg(campaigns,'open_rate'),
+    avg_click_rate: avg(campaigns,'click_rate'),
+    avg_conversion_rate: avg(campaigns,'conversion_rate'),
+    avg_bounce_rate: avg(campaigns,'bounce_rate'),
+  };
+}
+
+function getGroups(groupBy) {
+  const map = {};
+  campaigns.forEach(c => {
+    const key = c[groupBy] || 'Unknown';
+    if (!map[key]) map[key] = [];
+    map[key].push(c);
+  });
+  return map;
+}
+
+function getCampaignStats(c) {
+  const stats = {};
+  RATE_METRICS.forEach(m => {
+    const val = parseFloat(c[m]) || 0;
+    const bench = BENCHMARKS[m];
+    const diff = +(val - bench).toFixed(2);
+    stats[m] = { value: val, benchmark: bench, vs_benchmark: diff, status: diff>0?'above':diff<0?'below':'at' };
+  });
+  stats.revenue_generated = c.revenue_generated || 0;
+  stats.total_sent = c.total_sent || 0;
+  stats.total_converted = c.total_converted || 0;
+  stats.revenue_per_email = stats.total_sent > 0 ? +((stats.revenue_generated/stats.total_sent)).toFixed(4) : 0;
+  return stats;
+}
+
+function getGroupStats(groupCampaigns) {
+  const stats = {};
+  RATE_METRICS.forEach(m => {
+    const bench = BENCHMARKS[m];
+    const vals = groupCampaigns.map(c=>parseFloat(c[m])||0);
+    const avgVal = +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2);
+    const diff = +(avgVal - bench).toFixed(2);
+    stats[m] = { avg: avgVal, max: +Math.max(...vals).toFixed(2), min: +Math.min(...vals).toFixed(2),
+                 benchmark: bench, vs_benchmark: diff, status: diff>0?'above':diff<0?'below':'at' };
+  });
+  stats.total_campaigns = groupCampaigns.length;
+  stats.total_sent = groupCampaigns.reduce((s,c)=>s+(c.total_sent||0),0);
+  stats.total_revenue = +groupCampaigns.reduce((s,c)=>s+(c.revenue_generated||0),0).toFixed(2);
+  const bestOpen = groupCampaigns.reduce((best,c)=>(parseFloat(c.open_rate)||0)>(parseFloat(best.open_rate)||0)?c:best, groupCampaigns[0]);
+  stats.best_open_rate_campaign = bestOpen?.campaign_name || '';
+  return stats;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════════════════════
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  document.querySelectorAll('.sb-item[data-section]').forEach(el => el.classList.remove('active'));
+  const item = document.querySelector(`.sb-item[data-section="${name}"]`);
+  if (item) item.classList.add('active');
+
+  // Lazy-render charts when section becomes visible
+  if (name === 'trends') setTimeout(renderTrendChart, 50);
+  if (name === 'ab') setTimeout(renderAbCharts, 50);
+  if (name === 'dashboard') setTimeout(renderDashboardCharts, 50);
+}
+
+function switchChartTab(tab) {
+  document.querySelectorAll('.chart-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.chart-panel').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('chart-panel-'+tab).classList.add('active');
+  setTimeout(() => Plotly.Plots.resize(document.getElementById('chart-'+tab)), 50);
+}
+
+function switchInsightTab(tab) {
+  document.querySelectorAll('.insight-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.insight-panel').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('insight-panel-'+tab).classList.add('active');
+}
+
+function switchGroupBy(val) {
+  currentGroupBy = val;
+  document.getElementById('grp-chip-type').classList.toggle('active', val==='campaign_type');
+  document.getElementById('grp-chip-segment').classList.toggle('active', val==='segment');
+  buildGroupAccordions();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA SOURCE CONTROL
+// ══════════════════════════════════════════════════════════════════════════════
+function onDataSourceChange() {
+  const val = document.querySelector('input[name=datasource]:checked').value;
+  document.getElementById('uploadAreaWrap').style.display = val==='upload' ? 'block' : 'none';
+  if (val === 'sample') loadData(RAW_CSV);
+}
+
+function onCsvUpload(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      loadData(e.target.result);
+      document.getElementById('uploadStatus').className = 'status-bar success';
+      document.getElementById('uploadStatus').textContent = `✓ Loaded ${campaigns.length} campaigns from ${file.name}`;
+    } catch(err) {
+      document.getElementById('uploadStatus').className = 'status-bar error';
+      document.getElementById('uploadStatus').textContent = 'Error: ' + err.message;
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RENDER: KPIs + data preview
+// ══════════════════════════════════════════════════════════════════════════════
+function onDataLoaded() {
+  renderKpis();
+  renderDataPreview();
+  renderDashboardCharts();
+  buildAbSelectors();
+  buildCampaignAccordions();
+  buildGroupAccordions();
+  document.getElementById('batch-campaign-count').textContent = campaigns.length;
+}
+
+function renderKpis() {
+  const summary = getOverallSummary();
+  const orDiff = +(summary.avg_open_rate - BENCHMARKS.open_rate).toFixed(1);
+  document.getElementById('kpi-campaigns').textContent = summary.total_campaigns;
+  document.getElementById('kpi-campaigns-sub').textContent = 'campaigns analysed';
+  document.getElementById('kpi-sent').textContent = summary.total_sent >= 1e6
+    ? (summary.total_sent/1e6).toFixed(1)+'M'
+    : summary.total_sent.toLocaleString();
+  document.getElementById('kpi-sent-sub').textContent = 'emails sent';
+  document.getElementById('kpi-openrate').textContent = summary.avg_open_rate + '%';
+  const deltaEl = document.getElementById('kpi-openrate-delta');
+  deltaEl.textContent = (orDiff>=0?'+':'') + orDiff + '% vs benchmark';
+  deltaEl.className = 'kpi-delta ' + (orDiff>=0?'up':'down');
+  const rev = summary.total_revenue;
+  document.getElementById('kpi-revenue').textContent = rev>=1e6?'$'+(rev/1e6).toFixed(1)+'M':'$'+rev.toLocaleString();
+  document.getElementById('kpi-revenue-sub').textContent = 'total revenue generated';
+}
+
+function renderDataPreview() {
+  const cols = ['campaign_name','campaign_type','segment','send_date','open_rate','click_rate','conversion_rate','bounce_rate','revenue_generated'];
+  const table = document.getElementById('preview-table');
+  const thead = `<thead><tr>${cols.map(c=>`<th>${c.replace(/_/g,' ').toUpperCase()}</th>`).join('')}</tr></thead>`;
+  const tbody = '<tbody>' + campaigns.map(c=>`<tr>${cols.map(k=>{
+    let v = c[k]||'—';
+    if(['open_rate','click_rate','conversion_rate','bounce_rate'].includes(k)) v = v+'%';
+    if(k==='revenue_generated') v = v>0?'$'+parseFloat(v).toLocaleString():'—';
+    if(k==='campaign_type'){
+      const colours={promotional:'badge-blue',newsletter:'badge-purple',onboarding:'badge-green',re_engagement:'badge-yellow',product_launch:'badge-red'};
+      v=`<span class="badge ${colours[v]||'badge-blue'}">${v}</span>`;
+    }
+    return `<td>${v}</td>`;
+  }).join('')}</tr>`).join('') + '</tbody>';
+  table.innerHTML = thead+tbody;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHARTS
+// ══════════════════════════════════════════════════════════════════════════════
+const CHART_LAYOUT_BASE = {
+  paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+  margin:{t:40,r:20,b:60,l:60},
+  font:{family:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',size:11,color:'#374151'},
 };
 
-// ══ Render static metrics ════════════════════════════════════════════════════
-function renderMetrics() {
-  // Open Rate
-  document.getElementById('or-val').textContent = metrics.open_rate + '%';
-  const orDiff = +(metrics.open_rate - BENCHMARKS.open_rate).toFixed(1);
-  document.getElementById('or-delta-val').textContent = (orDiff>0?'+':'') + orDiff + '%';
-  const orEl = document.getElementById('or-delta');
-  orEl.className = 'metric-delta ' + (orDiff>=0?'up':'down');
-  orEl.querySelector('svg polyline').setAttribute('points', orDiff>=0?'18 15 12 9 6 15':'18 9 12 15 6 9');
-
-  // CTR
-  document.getElementById('ctr-val').textContent = metrics.click_rate + '%';
-  const ctrDiff = +(metrics.click_rate - BENCHMARKS.click_rate).toFixed(1);
-  document.getElementById('ctr-delta-val').textContent = (ctrDiff>0?'+':'') + ctrDiff + '%';
-  document.getElementById('ctr-delta').className = 'metric-delta ' + (ctrDiff>=0?'up':'down');
-  document.getElementById('ctr-delta').querySelector('svg polyline').setAttribute('points', ctrDiff>=0?'18 15 12 9 6 15':'18 9 12 15 6 9');
-  // Fill bar to % of max 15%
-  document.getElementById('ctr-fill').style.width = Math.min(100, (metrics.click_rate/15)*100) + '%';
-
-  // Conversion
-  document.getElementById('conv-val').textContent = metrics.conversion_rate + '%';
-  const cvDiff = +(metrics.conversion_rate - BENCHMARKS.conversion_rate).toFixed(1);
-  document.getElementById('conv-delta-val').textContent = (cvDiff>0?'+':'') + cvDiff + '%';
-  document.getElementById('conv-delta').className = 'metric-delta ' + (cvDiff>=0?'up':'down');
-  document.getElementById('conv-delta').querySelector('svg polyline').setAttribute('points', cvDiff>=0?'18 15 12 9 6 15':'18 9 12 15 6 9');
-  if (cvDiff < 0) document.getElementById('conv-pred').textContent = `Predicted lift: +${Math.abs(cvDiff+0.4).toFixed(1)}% with AI Auto-optimization.`;
-
-  // Node efficiency
-  document.getElementById('node-load').textContent = (8 + Math.random()*8).toFixed(1) + 'ms';
-  document.getElementById('node-density').textContent = (0.78 + Math.random()*0.12).toFixed(2);
-  document.getElementById('node-campaigns').textContent = campaigns.length;
+function renderDashboardCharts() {
+  if (!campaigns.length) return;
+  renderBenchmarkChart();
+  renderRevenueChart();
+  renderHeatmapChart();
 }
-renderMetrics();
 
-// ══ Static hero ═══════════════════════════════════════════════════════════════
-document.getElementById('heroText').textContent =
-  'Onboarding campaigns are outperforming all benchmarks.';
+function renderBenchmarkChart() {
+  const metrics = POSITIVE_METRICS;
+  const labels = metrics.map(m=>METRIC_LABELS[m]);
+  const avgVals = metrics.map(m=>avg(campaigns,m));
+  const benchVals = metrics.map(m=>BENCHMARKS[m]);
 
-function renderInsightStream(items) {
-  const el = document.getElementById('streamCards');
-  const iconMap = {
-    critical: `<div class="stream-icon icon-critical"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>`,
-    optimized: `<div class="stream-icon icon-optimized"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>`,
-    queued: `<div class="stream-icon icon-queued"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>`,
-  };
-  const badgeMap = { critical:'badge-critical', optimized:'badge-optimized', queued:'badge-queued' };
-  const labelMap = { critical:'Critical Update', optimized:'Optimized', queued:'Queued' };
+  const data = [
+    { type:'bar', name:'Your Campaigns (avg)', x:labels, y:avgVals,
+      marker:{color:'#6366f1'}, text:avgVals.map(v=>v.toFixed(1)+'%'), textposition:'outside' },
+    { type:'bar', name:'Industry Benchmark', x:labels, y:benchVals,
+      marker:{color:'#f97316'}, text:benchVals.map(v=>v+'%'), textposition:'outside' },
+  ];
+  Plotly.react('chart-benchmark', data, {
+    ...CHART_LAYOUT_BASE,
+    title:{text:'Campaign Averages vs Industry Benchmarks',font:{size:13}},
+    barmode:'group', yaxis:{title:'Rate (%)'},
+    legend:{orientation:'h',y:-0.15},
+  },{responsive:true});
+}
 
-  const cards = items.map(item => `
-    <div class="stream-card">
-      <div class="stream-card-top">
-        ${iconMap[item.status]||iconMap.queued}
-        <div style="flex:1;">
-          <div class="stream-badge ${badgeMap[item.status]||'badge-queued'}">${labelMap[item.status]||'Update'}</div>
-          <div class="stream-title">${item.title}</div>
-          <div class="stream-desc">${item.description}</div>
-        </div>
+function renderRevenueChart() {
+  const sorted = [...campaigns].sort((a,b)=>a.revenue_generated-b.revenue_generated);
+  const data = [{
+    type:'bar', orientation:'h',
+    x:sorted.map(c=>c.revenue_generated),
+    y:sorted.map(c=>c.campaign_name),
+    marker:{color:sorted.map(c=>c.revenue_generated), colorscale:'Blues', showscale:false},
+    text:sorted.map(c=>c.revenue_generated>0?'$'+c.revenue_generated.toLocaleString():'$0'),
+    textposition:'outside',
+  }];
+  Plotly.react('chart-revenue', data, {
+    ...CHART_LAYOUT_BASE,
+    title:{text:'Revenue by Campaign',font:{size:13}},
+    xaxis:{title:'Revenue ($)'},
+    margin:{t:40,r:80,b:40,l:200},
+    height:420,
+  },{responsive:true});
+}
+
+function renderHeatmapChart() {
+  const metrics = RATE_METRICS;
+  const sorted = [...campaigns].sort((a,b)=>b.open_rate-a.open_rate);
+  const zRaw = metrics.map(m=>sorted.map(c=>parseFloat(c[m])||0));
+  const zNorm = zRaw.map((row,i)=>{
+    const lo=Math.min(...row), hi=Math.max(...row), span=hi-lo||1;
+    const n=row.map(v=>(v-lo)/span);
+    return NEGATIVE_METRICS.includes(metrics[i]) ? n.map(v=>1-v) : n;
+  });
+  const textVals = zRaw.map(row=>row.map(v=>v.toFixed(1)+'%'));
+
+  Plotly.react('chart-heatmap', [{
+    type:'heatmap',
+    z:zNorm, x:sorted.map(c=>c.campaign_name), y:metrics.map(m=>METRIC_LABELS[m]),
+    colorscale:'RdYlGn', showscale:false, text:textVals, texttemplate:'%{text}',
+  }], {
+    ...CHART_LAYOUT_BASE,
+    title:{text:'Metrics Heatmap — green = better',font:{size:13}},
+    xaxis:{tickangle:-40,automargin:true},
+    margin:{t:40,r:20,b:140,l:110},
+    height:360,
+  },{responsive:true});
+}
+
+function renderTrendChart() {
+  if (!campaigns.length) return;
+  const metric = document.getElementById('trend-metric').value;
+  const groupBy = document.getElementById('trend-groupby').value;
+  const bench = BENCHMARKS[metric];
+  const label = METRIC_LABELS[metric];
+
+  const traces = [];
+  if (groupBy === 'none') {
+    const sorted = [...campaigns].sort((a,b)=>new Date(a.send_date)-new Date(b.send_date));
+    traces.push({
+      type:'scatter', mode:'lines+markers', name:label,
+      x:sorted.map(c=>c.send_date), y:sorted.map(c=>parseFloat(c[metric])||0),
+      text:sorted.map(c=>c.campaign_name),
+      hovertemplate:'<b>%{text}</b><br>%{x}<br>'+label+': %{y:.2f}%<extra></extra>',
+      line:{width:2,color:'#6366f1'}, marker:{size:7},
+    });
+  } else {
+    const groups = getGroups(groupBy);
+    const colours = ['#6366f1','#f97316','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+    Object.entries(groups).forEach(([gname,gcamps],i)=>{
+      const sorted = [...gcamps].sort((a,b)=>new Date(a.send_date)-new Date(b.send_date));
+      traces.push({
+        type:'scatter', mode:'lines+markers', name:gname,
+        x:sorted.map(c=>c.send_date), y:sorted.map(c=>parseFloat(c[metric])||0),
+        text:sorted.map(c=>c.campaign_name),
+        hovertemplate:'<b>%{text}</b><br>%{x}<br>'+label+': %{y:.2f}%<extra></extra>',
+        line:{width:2,color:colours[i%colours.length]}, marker:{size:7},
+      });
+    });
+  }
+
+  // Benchmark line
+  if (bench) traces.push({
+    type:'scatter', mode:'lines', name:'Benchmark '+bench+'%',
+    x:[campaigns[0].send_date, campaigns[campaigns.length-1].send_date],
+    y:[bench,bench], line:{dash:'dash',color:'#ef4444',width:1.5}, hoverinfo:'skip',
+  });
+
+  Plotly.react('chart-trend', traces, {
+    ...CHART_LAYOUT_BASE,
+    title:{text:label+' Over Time',font:{size:13}},
+    xaxis:{title:'Send Date'}, yaxis:{title:'Rate (%)'},
+    legend:{orientation:'h',y:-0.15},
+  },{responsive:true});
+}
+
+function buildAbSelectors() {
+  const names = campaigns.map(c=>c.campaign_name);
+  ['ab-campaign-a','ab-campaign-b'].forEach((id,i)=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = names.map((n,j)=>`<option value="${n}" ${j===i?'selected':''}>${n}</option>`).join('');
+  });
+  renderAbCharts();
+}
+
+function renderAbCharts() {
+  if (!campaigns.length) return;
+  const nameA = document.getElementById('ab-campaign-a').value;
+  const nameB = document.getElementById('ab-campaign-b').value;
+  const cA = campaigns.find(c=>c.campaign_name===nameA);
+  const cB = campaigns.find(c=>c.campaign_name===nameB);
+  if (!cA || !cB) return;
+  renderAbBar(cA, cB);
+  renderAbRadar(cA, cB);
+  renderAbTable(cA, cB);
+}
+
+function renderAbBar(cA, cB) {
+  const metrics = RATE_METRICS;
+  const labels = metrics.map(m=>METRIC_LABELS[m]);
+  const data = [
+    { type:'bar', name:cA.campaign_name, x:labels, y:metrics.map(m=>parseFloat(cA[m])||0),
+      marker:{color:'#6366f1'}, text:metrics.map(m=>(parseFloat(cA[m])||0).toFixed(1)+'%'), textposition:'outside' },
+    { type:'bar', name:cB.campaign_name, x:labels, y:metrics.map(m=>parseFloat(cB[m])||0),
+      marker:{color:'#22c55e'}, text:metrics.map(m=>(parseFloat(cB[m])||0).toFixed(1)+'%'), textposition:'outside' },
+    { type:'scatter', mode:'markers', name:'Benchmark',
+      x:labels, y:metrics.map(m=>BENCHMARKS[m]),
+      marker:{symbol:'line-ew',size:14,color:'#ef4444',line:{width:2,color:'#ef4444'}} },
+  ];
+  Plotly.react('chart-ab-bar', data, {
+    ...CHART_LAYOUT_BASE,
+    title:{text:`A/B: ${cA.campaign_name} vs ${cB.campaign_name}`,font:{size:13}},
+    barmode:'group', yaxis:{title:'Rate (%)'},
+    legend:{orientation:'h',y:-0.2},
+    height:360,
+  },{responsive:true});
+}
+
+function renderAbRadar(cA, cB) {
+  const metrics = POSITIVE_METRICS;
+  const labels = [...metrics.map(m=>METRIC_LABELS[m]), METRIC_LABELS[metrics[0]]];
+  const vA = [...metrics.map(m=>parseFloat(cA[m])||0), parseFloat(cA[metrics[0]])||0];
+  const vB = [...metrics.map(m=>parseFloat(cB[m])||0), parseFloat(cB[metrics[0]])||0];
+  const vBench = [...metrics.map(m=>BENCHMARKS[m]), BENCHMARKS[metrics[0]]];
+  const maxVal = Math.max(...vA,...vB,...vBench)*1.2;
+
+  Plotly.react('chart-ab-radar',[
+    {type:'scatterpolar',fill:'toself',name:cA.campaign_name,r:vA,theta:labels,opacity:.75,marker:{color:'#6366f1'}},
+    {type:'scatterpolar',fill:'toself',name:cB.campaign_name,r:vB,theta:labels,opacity:.75,marker:{color:'#22c55e'}},
+    {type:'scatterpolar',fill:'toself',name:'Benchmark',r:vBench,theta:labels,
+      line:{dash:'dash',color:'#ef4444'},fillcolor:'rgba(239,68,68,0.05)'},
+  ],{
+    ...CHART_LAYOUT_BASE,
+    polar:{radialaxis:{visible:true,range:[0,maxVal]}},
+    showlegend:true, legend:{orientation:'h',y:-0.15},
+    margin:{t:30,r:30,b:60,l:30},
+    height:360,
+  },{responsive:true});
+}
+
+function renderAbTable(cA, cB) {
+  const metrics = RATE_METRICS;
+  const rows = metrics.map(m=>{
+    const vA = parseFloat(cA[m])||0, vB = parseFloat(cB[m])||0;
+    const aWins = NEGATIVE_METRICS.includes(m) ? vA<vB : vA>vB;
+    const bWins = NEGATIVE_METRICS.includes(m) ? vB<vA : vB>vA;
+    const winner = vA===vB ? `<span class="winner-badge tie">Tie</span>`
+      : aWins ? `<span class="winner-badge a">A</span>` : `<span class="winner-badge b">B</span>`;
+    return `<tr><td>${METRIC_LABELS[m]}</td><td>${vA.toFixed(2)}%</td><td>${vB.toFixed(2)}%</td><td>${winner}</td></tr>`;
+  });
+  // Revenue
+  const rA=cA.revenue_generated, rB=cB.revenue_generated;
+  const revWinner = rA===rB?`<span class="winner-badge tie">Tie</span>`
+    :rA>rB?`<span class="winner-badge a">A</span>`:`<span class="winner-badge b">B</span>`;
+  rows.push(`<tr><td>Revenue</td><td>$${rA.toLocaleString()}</td><td>$${rB.toLocaleString()}</td><td>${revWinner}</td></tr>`);
+
+  document.getElementById('ab-metrics-table').innerHTML = `
+    <table class="metrics-table">
+      <thead><tr><th>Metric</th><th>${cA.campaign_name.split(' ').slice(0,2).join(' ')}</th><th>${cB.campaign_name.split(' ').slice(0,2).join(' ')}</th><th>Winner</th></tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ACCORDIONS
+// ══════════════════════════════════════════════════════════════════════════════
+function buildCampaignAccordions() {
+  const container = document.getElementById('campaign-accordions');
+  container.innerHTML = campaigns.map((c,i)=>`
+    <div class="accordion-item" id="acc-camp-${i}">
+      <div class="accordion-header" onclick="toggleAccordion('camp',${i})">
+        <span>📩 ${c.campaign_name} <span style="font-weight:400;color:#6b7280;font-size:.78rem;">(${c.campaign_type}, ${c.segment})</span></span>
+        <span class="acc-arrow">▼</span>
       </div>
-      ${item.time ? `<div class="stream-footer">
-        <span class="stream-time">${item.time}</span>
-        ${item.status==='critical' ? '<span class="stream-resolve">Resolve</span>' : item.status==='optimized' ? '<div class="stream-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>' : '<div class="stream-clock"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'}
-      </div>` : ''}
-    </div>`).join('');
-
-  // Keep system health card
-  const healthCard = el.querySelector('.sys-health-card')?.outerHTML || '';
-  el.innerHTML = cards + healthCard;
-}
-
-
-function renderWins(wins) {
-  document.getElementById('winsGrid').innerHTML = wins.map(w => `
-    <div class="win-card">
-      <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-      <div class="win-title">${w.title}</div>
-      <div class="win-desc">${w.description.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')}</div>
-      <div class="win-time">Validated ${w.time_ago}</div>
+      <div class="accordion-body" id="acc-camp-body-${i}">
+        <button class="btn-sm btn-primary" style="margin-bottom:.75rem;" onclick="generateCampaignInsight(${i})">Generate Insight</button>
+        <div id="camp-status-${i}" class="status-bar"></div>
+        <div id="camp-output-${i}" class="insight-output"></div>
+      </div>
     </div>`).join('');
 }
 
-// ══ Detailed Analysis Modal (static) ═════════════════════════════════════════
-function showDetailedAnalysis() {
-  document.getElementById('modal').style.display = 'block';
-  document.getElementById('modalContent').innerHTML = `
-    <h3 style="font-size:.95rem;font-weight:700;margin:0 0 .4rem;color:#111827;">✅ What Worked</h3>
-    <ul style="padding-left:1.25rem;margin-bottom:1rem;">
-      <li style="margin:.3rem 0;font-size:.83rem;">Onboarding Day 1 achieved a <strong>70% open rate</strong> — 3.3× the industry benchmark of 21.5%.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;">VIP Early Access hit <strong>34.9% click rate</strong>, highest across all campaigns.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;">Cyber Monday drove <strong>$104,400 revenue</strong> with a 40% open rate lift vs. Black Friday.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;">Product launch campaigns averaged <strong>57.5% open rate</strong> — best performing type overall.</li>
-    </ul>
-    <h3 style="font-size:.95rem;font-weight:700;margin:.75rem 0 .4rem;color:#111827;">❌ What Didn't Work</h3>
-    <ul style="padding-left:1.25rem;margin-bottom:1rem;">
-      <li style="margin:.3rem 0;font-size:.83rem;">Re-engagement campaigns averaged only <strong>15% open rate</strong> — 6.5 pts below benchmark.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;">Newsletter CTR averaged <strong>2.4%</strong> with zero conversions — no revenue attribution.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;">January New Year Promo had the <strong>lowest open rate</strong> (20%) among promotional emails.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;">Bounce rate on Black Friday was <strong>4%</strong> — 5.7× above the 0.7% benchmark, suggesting list hygiene issues.</li>
-    </ul>
-    <h3 style="font-size:.95rem;font-weight:700;margin:.75rem 0 .4rem;color:#111827;">🎯 What to Optimize Next</h3>
-    <ul style="padding-left:1.25rem;margin-bottom:1rem;">
-      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Clean bounce list</strong> before next promotional send — 4% bounce on large sends risks domain reputation.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Add conversion CTA to newsletters</strong> — 22% average open rate is wasted with 0% revenue attribution.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Expand VIP / product launch sequences</strong> — these segments show 3–5× higher engagement than broadcast sends.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;"><strong>Refresh re-engagement offer</strong> — 15% discount is underperforming; test 25%+ or free trial offers.</li>
-    </ul>
-    <h3 style="font-size:.95rem;font-weight:700;margin:.75rem 0 .4rem;color:#111827;">👥 Segment Recommendations</h3>
-    <ul style="padding-left:1.25rem;">
-      <li style="margin:.3rem 0;font-size:.83rem;"><strong>high_value:</strong> Expand gift guide and early access campaigns — $22,725 revenue on 8,500 sends = best RPE.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;"><strong>new_users:</strong> Add Day 14 and Day 30 onboarding touchpoints to sustain the strong Day-1 engagement.</li>
-      <li style="margin:.3rem 0;font-size:.83rem;"><strong>inactive_90d:</strong> Increase win-back incentive; current 20% off yielding only 0.48% conversion rate.</li>
-    </ul>`;
+function buildGroupAccordions() {
+  const groups = getGroups(currentGroupBy);
+  const container = document.getElementById('group-accordions');
+  container.innerHTML = Object.entries(groups).map(([name,gcamps],i)=>`
+    <div class="accordion-item" id="acc-grp-${i}">
+      <div class="accordion-header" onclick="toggleAccordion('grp',${i})">
+        <span>📁 ${name} <span style="font-weight:400;color:#6b7280;font-size:.78rem;">(${gcamps.length} campaigns)</span></span>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="accordion-body" id="acc-grp-body-${i}">
+        <button class="btn-sm btn-primary" style="margin-bottom:.75rem;" onclick="generateGroupInsight('${name}',${i})">Generate Insight</button>
+        <div id="grp-status-${i}" class="status-bar"></div>
+        <div id="grp-output-${i}" class="insight-output"></div>
+      </div>
+    </div>`).join('');
 }
 
-// ══ Static render on load ═════════════════════════════════════════════════════
-renderInsightStream([
-  { status:'critical', title:'Re-engagement Open Rate', description:'Win-back campaigns averaging 15% — 6.5pts below benchmark. Offer needs refresh.', time:'09:41 AM' },
-  { status:'optimized', title:'Onboarding Day 1', description:'70% open rate achieved — 3× industry benchmark across new_users segment.', time:'08:12 AM' },
-  { status:'queued',   title:'List Hygiene Sweep', description:'Bounce rate on promotional sends exceeds safe threshold. Schedule cleanup.' },
-]);
+function toggleAccordion(type, idx) {
+  const header = document.querySelector(`#acc-${type}-${idx} .accordion-header`);
+  const body = document.getElementById(`acc-${type}-body-${idx}`);
+  header.classList.toggle('open');
+  body.classList.toggle('open');
+}
 
-renderWins([
-  { title:'VIP Early Access',    description:'Achieved <strong>34.9%</strong> click rate — highest across all 15 campaigns.', time_ago:'2H AGO' },
-  { title:'Cyber Monday Revenue', description:'<strong>$104,400</strong> revenue generated — best single campaign in dataset.', time_ago:'5H AGO' },
-]);
+// ══════════════════════════════════════════════════════════════════════════════
+// ANTHROPIC API
+// ══════════════════════════════════════════════════════════════════════════════
+function getApiKey() { return document.getElementById('apiKeyInput').value.trim(); }
+
+function setStatus(el, text, type='') {
+  el.className = 'status-bar' + (type?' '+type:'');
+  el.innerHTML = type==='loading'?`<span class="spinner"></span>${text}`:text;
+}
+
+async function streamClaude(userPrompt, outputEl, statusEl) {
+  const key = getApiKey();
+  if (!key) { setStatus(statusEl,'Enter your Anthropic API key in the top bar first.','error'); return ''; }
+
+  setStatus(statusEl, 'Generating...', 'loading');
+  outputEl.innerHTML = '';
+  let fullText = '';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 2048,
+        system: [{ type:'text', text:SYSTEM_PROMPT, cache_control:{type:'ephemeral'} }],
+        stream: true,
+        messages:[{ role:'user', content:userPrompt }],
+      }),
+    });
+
+    if (!res.ok) {
+      let msg = res.statusText;
+      try { const e=await res.json(); msg=e?.error?.message||msg; } catch{}
+      setStatus(statusEl, `API Error ${res.status}: ${msg}`, 'error');
+      return '';
+    }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (!payload || payload==='[DONE]') continue;
+        try {
+          const ev = JSON.parse(payload);
+          if (ev.type==='content_block_delta' && ev.delta?.type==='text_delta') {
+            fullText += ev.delta.text;
+            outputEl.innerHTML = marked.parse(fullText) + '<span class="cursor-blink">▌</span>';
+          }
+        } catch {}
+      }
+    }
+
+    outputEl.innerHTML = marked.parse(fullText);
+    setStatus(statusEl, 'Done ✓', 'success');
+    return fullText;
+
+  } catch(err) {
+    setStatus(statusEl, `Error: ${err.message}`, 'error');
+    return '';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PROMPTS
+// ══════════════════════════════════════════════════════════════════════════════
+function buildCampaignPrompt(c) {
+  const stats = getCampaignStats(c);
+  return `Analyze the following individual email campaign and provide structured, data-driven insights.
+
+## Campaign Details
+${JSON.stringify(c, null, 2)}
+
+## Performance Statistics (with industry benchmarks)
+${JSON.stringify(stats, null, 2)}
+
+Provide your analysis in this exact format:
+
+---
+
+## Campaign: ${c.campaign_name}
+
+### Performance Overview
+[2-3 sentences summarizing overall campaign performance and its business impact]
+
+### ✅ What Worked
+- [Specific success #1 with supporting data]
+- [Specific success #2 with supporting data]
+- [Specific success #3 with supporting data]
+
+### ❌ What Didn't Work
+- [Specific underperformance #1 with supporting data]
+- [Specific underperformance #2 with supporting data]
+
+### 🎯 What to Optimize Next
+1. [Highest-priority actionable recommendation with expected impact]
+2. [Second recommendation with rationale]
+3. [Third recommendation]
+
+### Key Takeaway
+[One sentence — the single most important insight from this campaign]
+
+---`;
+}
+
+function buildGroupPrompt(groupName, gcamps) {
+  const stats = getGroupStats(gcamps);
+  return `Analyze the performance of this group of email campaigns and identify patterns, trends, and strategic recommendations.
+
+## Group: ${groupName} (${gcamps.length} campaigns, grouped by ${currentGroupBy})
+
+## Campaigns
+${JSON.stringify(gcamps.map(c=>({campaign_name:c.campaign_name,open_rate:c.open_rate,click_rate:c.click_rate,conversion_rate:c.conversion_rate,revenue_generated:c.revenue_generated})),null,2)}
+
+## Aggregate Statistics
+${JSON.stringify(stats, null, 2)}
+
+Provide your analysis in this exact format:
+
+---
+
+## Group Analysis: ${groupName}
+
+### Group Performance Overview
+[3-4 sentences summarizing overall group performance, key trends, and business significance]
+
+### ✅ What Worked Across This Group
+- [Pattern or strength #1 with data]
+- [Pattern or strength #2 with data]
+- [Pattern or strength #3 with data]
+
+### ❌ What Didn't Work
+- [Challenge #1 with data]
+- [Challenge #2 with data]
+
+### 🎯 Strategic Recommendations
+1. [Recommendation #1 — highest impact]
+2. [Recommendation #2]
+3. [Recommendation #3]
+
+### Standout Campaigns
+- **Best performer:** [Campaign name and why]
+- **Needs most attention:** [Campaign name and why]
+
+### Group Takeaway
+[One sentence — the single most important strategic insight]
+
+---`;
+}
+
+function buildExecPrompt() {
+  const summary = getOverallSummary();
+  const compact = campaigns.map(c=>({
+    campaign_name:c.campaign_name, campaign_type:c.campaign_type,
+    open_rate:c.open_rate, click_rate:c.click_rate,
+    conversion_rate:c.conversion_rate, revenue_generated:c.revenue_generated,
+  }));
+  return `You are presenting a portfolio-level email performance review to the C-suite.
+
+## Overall Portfolio Statistics
+${JSON.stringify(summary, null, 2)}
+
+## All Campaigns
+${JSON.stringify(compact, null, 2)}
+
+Write a concise executive summary in this exact format:
+
+---
+
+## Executive Summary
+
+### Portfolio Health
+[2-3 sentences on overall portfolio performance vs industry benchmarks]
+
+### Top Performers
+- [Best campaign name + standout metric and value]
+- [Second-best campaign name + standout metric]
+
+### Campaigns Needing Attention
+- [Underperforming campaign + specific issue with data]
+- [Second underperformer + issue]
+
+### Strategic Recommendations for Next Quarter
+1. [Recommendation with expected impact]
+2. [Recommendation with rationale]
+3. [Recommendation with rationale]
+
+### Portfolio Verdict
+[One sentence — the single most important strategic conclusion]
+
+---`;
+}
+
+function buildAbPrompt(cA, cB) {
+  const sA = getCampaignStats(cA), sB = getCampaignStats(cB);
+  return `Compare these two email campaigns head-to-head and explain what drove the performance differences.
+
+## Campaign A: ${cA.campaign_name}
+${JSON.stringify(cA, null, 2)}
+Stats: ${JSON.stringify(sA, null, 2)}
+
+## Campaign B: ${cB.campaign_name}
+${JSON.stringify(cB, null, 2)}
+Stats: ${JSON.stringify(sB, null, 2)}
+
+Provide your comparison in this exact format:
+
+---
+
+## A/B Comparison: ${cA.campaign_name} vs ${cB.campaign_name}
+
+### Head-to-Head Summary
+[2-3 sentences on which campaign performed better overall and the most significant differences]
+
+### Key Metric Differences
+
+| Metric | ${cA.campaign_name.split(' ').slice(0,2).join(' ')} | ${cB.campaign_name.split(' ').slice(0,2).join(' ')} | Winner |
+|--------|---------|---------|--------|
+[Fill 6 rows: open_rate, click_rate, conversion_rate, bounce_rate, unsubscribe_rate, revenue]
+
+### Root Causes — ${cA.campaign_name}
+- [Key factor #1]
+- [Key factor #2]
+
+### Root Causes — ${cB.campaign_name}
+- [Key factor #1]
+- [Key factor #2]
+
+### What to Replicate
+[The single most impactful element to carry forward from the better performer]
+
+### What to Fix
+[The single most important issue in the underperformer]
+
+---`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INSIGHT GENERATION HANDLERS
+// ══════════════════════════════════════════════════════════════════════════════
+async function generateExecSummary() {
+  const outputEl = document.getElementById('exec-insight-output');
+  const statusEl = document.getElementById('exec-status');
+  const text = await streamClaude(buildExecPrompt(), outputEl, statusEl);
+  if (text) insightStore.exec = text;
+}
+
+async function generateCampaignInsight(idx) {
+  const c = campaigns[idx];
+  const outputEl = document.getElementById(`camp-output-${idx}`);
+  const statusEl = document.getElementById(`camp-status-${idx}`);
+  const text = await streamClaude(buildCampaignPrompt(c), outputEl, statusEl);
+  if (text) insightStore.campaigns[c.campaign_id || c.campaign_name] = { campaign:c, insight:text };
+}
+
+async function generateAllCampaigns() {
+  const statusEl = document.getElementById('all-campaigns-status');
+  setStatus(statusEl,'Generating insights for all campaigns...','loading');
+  for (let i=0; i<campaigns.length; i++) {
+    setStatus(statusEl,`Generating ${i+1}/${campaigns.length}: ${campaigns[i].campaign_name}...`,'loading');
+    // Open accordion
+    const header = document.querySelector(`#acc-camp-${i} .accordion-header`);
+    const body = document.getElementById(`acc-camp-body-${i}`);
+    if (!header.classList.contains('open')) { header.classList.add('open'); body.classList.add('open'); }
+    await generateCampaignInsight(i);
+  }
+  setStatus(statusEl,`All ${campaigns.length} campaign insights generated ✓`,'success');
+}
+
+async function generateGroupInsight(groupName, idx) {
+  const groups = getGroups(currentGroupBy);
+  const gcamps = groups[groupName];
+  if (!gcamps) return;
+  const outputEl = document.getElementById(`grp-output-${idx}`);
+  const statusEl = document.getElementById(`grp-status-${idx}`);
+  const text = await streamClaude(buildGroupPrompt(groupName, gcamps), outputEl, statusEl);
+  if (text) insightStore.groups[groupName] = { group:groupName, campaigns:gcamps, insight:text };
+}
+
+async function generateAllGroups() {
+  const statusEl = document.getElementById('groups-status');
+  const groups = getGroups(currentGroupBy);
+  const entries = Object.entries(groups);
+  setStatus(statusEl,`Generating insights for ${entries.length} groups...`,'loading');
+  for (let i=0; i<entries.length; i++) {
+    const [name,] = entries[i];
+    setStatus(statusEl,`Generating ${i+1}/${entries.length}: ${name}...`,'loading');
+    const header = document.querySelector(`#acc-grp-${i} .accordion-header`);
+    const body = document.getElementById(`acc-grp-body-${i}`);
+    if (!header.classList.contains('open')) { header.classList.add('open'); body.classList.add('open'); }
+    await generateGroupInsight(name, i);
+  }
+  setStatus(statusEl,`All ${entries.length} group insights generated ✓`,'success');
+}
+
+async function generateAbInsight() {
+  const nameA = document.getElementById('ab-campaign-a').value;
+  const nameB = document.getElementById('ab-campaign-b').value;
+  const cA = campaigns.find(c=>c.campaign_name===nameA);
+  const cB = campaigns.find(c=>c.campaign_name===nameB);
+  if (!cA || !cB) return;
+  if (nameA === nameB) { alert('Please select two different campaigns.'); return; }
+  const outputEl = document.getElementById('ab-insight-output');
+  const statusEl = document.getElementById('ab-status');
+  await streamClaude(buildAbPrompt(cA, cB), outputEl, statusEl);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BATCH API
+// ══════════════════════════════════════════════════════════════════════════════
+let currentBatchId = null;
+
+async function submitBatch() {
+  const key = getApiKey();
+  const statusEl = document.getElementById('submit-status');
+  if (!key) { setStatus(statusEl,'Enter your API key first.','error'); return; }
+
+  setStatus(statusEl,'Submitting batch...','loading');
+
+  const requests = campaigns.map(c=>({
+    custom_id: c.campaign_id || c.campaign_name,
+    params: {
+      model: MODEL,
+      max_tokens: 2048,
+      system:[{type:'text',text:SYSTEM_PROMPT,cache_control:{type:'ephemeral'}}],
+      messages:[{role:'user',content:buildCampaignPrompt(c)}],
+    },
+  }));
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages/batches', {
+      method:'POST',
+      headers:{
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'content-type':'application/json',
+        'anthropic-beta':'message-batches-2024-09-24',
+      },
+      body:JSON.stringify({requests}),
+    });
+    if (!res.ok) {
+      const e=await res.json().catch(()=>({}));
+      setStatus(statusEl,`Error ${res.status}: ${e?.error?.message||res.statusText}`,'error');
+      return;
+    }
+    const data = await res.json();
+    currentBatchId = data.id;
+    document.getElementById('batch-id-display').textContent = data.id;
+    document.getElementById('batch-id-input').value = data.id;
+    setStatus(statusEl,`Batch submitted ✓ — ${requests.length} requests queued. Status: ${data.processing_status}`,'success');
+  } catch(err) {
+    setStatus(statusEl,`Error: ${err.message}`,'error');
+  }
+}
+
+async function checkBatchStatus() {
+  const key = getApiKey();
+  const batchId = document.getElementById('batch-id-input').value.trim();
+  const statusEl = document.getElementById('batch-status-display');
+  if (!key) { setStatus(statusEl,'Enter your API key first.','error'); return; }
+  if (!batchId) { setStatus(statusEl,'Enter a batch ID.','error'); return; }
+
+  setStatus(statusEl,'Checking...','loading');
+  try {
+    const res = await fetch(`https://api.anthropic.com/v1/messages/batches/${batchId}`, {
+      headers:{
+        'x-api-key':key,'anthropic-version':'2023-06-01',
+        'anthropic-beta':'message-batches-2024-09-24',
+      },
+    });
+    if (!res.ok) { setStatus(statusEl,`Error ${res.status}: ${res.statusText}`,'error'); return; }
+    const data = await res.json();
+    const counts = data.request_counts || {};
+    const detail = Object.entries(counts).map(([k,v])=>`${k}:${v}`).join(', ');
+    setStatus(statusEl,`Status: ${data.processing_status} — ${detail} — Ends: ${data.ended_at||'pending'}`,
+      data.processing_status==='ended'?'success':'loading');
+  } catch(err) {
+    setStatus(statusEl,'Error: '+err.message,'error');
+  }
+}
+
+async function retrieveBatchResults() {
+  const key = getApiKey();
+  const batchId = document.getElementById('batch-id-input').value.trim();
+  const statusEl = document.getElementById('batch-status-display');
+  if (!key || !batchId) { setStatus(statusEl,'API key and batch ID required.','error'); return; }
+
+  setStatus(statusEl,'Retrieving results...','loading');
+  try {
+    const res = await fetch(`https://api.anthropic.com/v1/messages/batches/${batchId}/results`, {
+      headers:{
+        'x-api-key':key,'anthropic-version':'2023-06-01',
+        'anthropic-beta':'message-batches-2024-09-24',
+      },
+    });
+    if (!res.ok) {
+      const e=await res.json().catch(()=>({}));
+      setStatus(statusEl,`Error ${res.status}: ${e?.error?.message||'Try again after batch completes.'}`,'error');
+      return;
+    }
+    const text = await res.text();
+    // JSONL format — one JSON per line
+    const lines = text.trim().split('\n').filter(Boolean);
+    const results = {};
+    lines.forEach(line=>{
+      try {
+        const r = JSON.parse(line);
+        if (r.result?.type==='succeeded') {
+          const content = r.result.message?.content || [];
+          const txt = content.filter(b=>b.type==='text').map(b=>b.text).join('');
+          results[r.custom_id] = txt;
+        } else {
+          results[r.custom_id] = `[Error: ${r.result?.error?.type||'unknown'}]`;
+        }
+      } catch {}
+    });
+
+    setStatus(statusEl,`Retrieved ${Object.keys(results).length} results ✓`,'success');
+    renderBatchResults(results);
+  } catch(err) {
+    setStatus(statusEl,'Error: '+err.message,'error');
+  }
+}
+
+function renderBatchResults(results) {
+  const container = document.getElementById('batch-results-container');
+  const accordions = document.getElementById('batch-results-accordions');
+  const idToName = {};
+  campaigns.forEach(c=>{ idToName[c.campaign_id]=c.campaign_name; idToName[c.campaign_name]=c.campaign_name; });
+
+  accordions.innerHTML = Object.entries(results).map(([cid,insight],i)=>{
+    const name = idToName[cid]||cid;
+    return `<div class="accordion-item" id="acc-batch-${i}">
+      <div class="accordion-header open" onclick="toggleAccordion('batch',${i})">
+        <span>📩 ${name}</span><span class="acc-arrow">▼</span>
+      </div>
+      <div class="accordion-body open">
+        <div class="insight-output">${marked.parse(insight)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.style.display='block';
+  // Save to store
+  Object.entries(results).forEach(([cid,insight])=>{
+    const c = campaigns.find(c=>c.campaign_id===cid||c.campaign_name===cid);
+    if (c) insightStore.campaigns[cid]={campaign:c,insight};
+  });
+}
+
+function copyBatchId() {
+  const id = document.getElementById('batch-id-display').textContent;
+  if (id && id!=='—') { navigator.clipboard.writeText(id); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DOWNLOAD
+// ══════════════════════════════════════════════════════════════════════════════
+function downloadFile(content, filename, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content],{type:mime}));
+  a.download = filename;
+  a.click();
+}
+
+function buildMarkdownReport() {
+  const lines = ['# Email Performance Insight Report\n', `_Generated: ${new Date().toLocaleString()}_\n\n---\n`];
+  if (insightStore.exec) { lines.push('## Executive Summary\n', insightStore.exec, '\n---\n'); }
+  if (Object.keys(insightStore.campaigns).length) {
+    lines.push('## Per-Campaign Insights\n');
+    Object.values(insightStore.campaigns).forEach(({insight})=>{ lines.push(insight,'\n---\n'); });
+  }
+  if (Object.keys(insightStore.groups).length) {
+    lines.push('## Group Analysis\n');
+    Object.values(insightStore.groups).forEach(({insight})=>{ lines.push(insight,'\n---\n'); });
+  }
+  return lines.join('\n');
+}
+
+function buildJsonReport() {
+  const safe = v => {
+    try { JSON.stringify(v); return v; } catch { return String(v); }
+  };
+  return JSON.stringify({
+    generated_at: new Date().toISOString(),
+    summary: getOverallSummary(),
+    executive_summary: insightStore.exec,
+    campaigns: insightStore.campaigns,
+    groups: insightStore.groups,
+  }, (k,v)=>safe(v), 2);
+}
+
+function buildCsvExport() {
+  const cols = ['campaign_id','campaign_name','campaign_type','segment','send_date','subject_line',
+    'total_sent','total_delivered','total_opened','total_clicked','total_converted',
+    'total_bounced','total_unsubscribed','revenue_generated',
+    'open_rate','click_rate','click_to_open_rate','conversion_rate','bounce_rate','unsubscribe_rate','delivery_rate'];
+  const header = cols.join(',');
+  const rows = campaigns.map(c=>cols.map(k=>{
+    const v = c[k]??'';
+    return typeof v==='string'&&v.includes(',') ? `"${v}"` : v;
+  }).join(','));
+  return [header,...rows].join('\n');
+}
+
+function downloadMarkdown() { downloadFile(buildMarkdownReport(),'email_insight_report.md','text/markdown'); }
+function downloadJSON()     { downloadFile(buildJsonReport(),'email_insight_report.json','application/json'); }
+function downloadCsv()      { downloadFile(buildCsvExport(),'campaigns_enriched.csv','text/csv'); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UTILITY
+// ══════════════════════════════════════════════════════════════════════════════
+function toggleApiKeyVisibility() {
+  const inp = document.getElementById('apiKeyInput');
+  const btn = inp.nextElementSibling;
+  if (inp.type==='password') { inp.type='text'; btn.textContent='Hide'; }
+  else { inp.type='password'; btn.textContent='Show'; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
+loadData(RAW_CSV);
 </script>
 </body>
 </html>
